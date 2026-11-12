@@ -24,8 +24,10 @@ this file first, then the nested `AGENTS.md` files (`client/`, `client/core/`,
   centralized services; do not reimplement per feature.
 
 ## Repository Map
-- `server.js` – static file server + `/message` WebSocket broadcast (requires
-  `ws`) + `/log` endpoint that appends to `logs/user_actions.log`.
+- `server.js` – `/message` WebSocket broadcast (requires `ws`) + `/log`
+  endpoint that appends to `logs/user_actions.log`. In development Vite serves
+  the files and proxies those two routes here (`API_ONLY=true`, port 3001).
+  `node server.js` (or `npm run start:prod`) serves `client/` itself.
 - `client/` – HTML, CSS, runtime JS, logger, WebSocket + help bootstrap. See
   `client/AGENTS.md`.
 - `client/core/` – shared services (ConfigService, ModeManager, CanvasTheme,
@@ -41,7 +43,8 @@ this file first, then the nested `AGENTS.md` files (`client/`, `client/core/`,
 ## Run + Test
 1. Optional deps (needed for WebSocket hub + curl broadcast demo):
    `npm install`.
-2. Start server: `npm start` (or `npm run dev`, both call `node server.js`).
+2. Start the dev server: `npm start` (or `npm run dev` / `npm run start:dev`).
+   Vite serves the app on port 3000 and `server.js` runs the API on port 3001.
 3. App lives at `http://localhost:3000`. Manual exercise only; no automated
    tests exist.
 4. WebSocket broadcast check (requires `ws`):\

@@ -198,10 +198,11 @@ async function build() {
 
     // Copy static files
     console.log('Copying static files...');
-    fs.writeFileSync(
-      path.join(DIST_DIR, 'package.json'),
-      fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')
-    );
+    // The release artifact starts with `cd dist && npm start` and has no Vite
+    // install, so its start script stays the static server.
+    const distPackage = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+    distPackage.scripts.start = 'node server.js';
+    fs.writeFileSync(path.join(DIST_DIR, 'package.json'), JSON.stringify(distPackage, null, 2) + '\n');
     fs.writeFileSync(
       path.join(DIST_CLIENT_DIR, 'config.json'),
       fs.readFileSync(path.join(__dirname, 'client', 'config.json'), 'utf8')

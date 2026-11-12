@@ -17,6 +17,8 @@ try {
 
 const PORT = process.env.PORT || 3000;
 const LOG_DIR = path.join(__dirname, 'logs');
+// Development runs Vite on 3000 and this process as the API only (see vite.config.js).
+const apiOnly = process.env.API_ONLY === 'true';
 
 // Track connected WebSocket clients
 const wsClients = new Set();
@@ -158,6 +160,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Static files are served by Vite in development
+  if (apiOnly) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found (development mode - use Vite dev server `npm start`)');
+    return;
+  }
+
   // Default to index.html for root path
   if (pathname === '/') {
     pathname = '/index.html';
@@ -227,7 +236,11 @@ server.listen(PORT, () => {
   } else {
     console.log(`WebSocket functionality disabled - install 'ws' package to enable`);
   }
-  console.log(`Serving files from: ${__dirname}`);
+  if (apiOnly) {
+    console.log('Development mode - static files served by Vite');
+  } else {
+    console.log(`Serving files from: ${path.join(__dirname, 'client')}`);
+  }
   console.log('Press Ctrl+C to stop the server');
 });
 

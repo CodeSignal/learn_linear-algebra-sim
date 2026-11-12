@@ -67,9 +67,10 @@ Every sidebar section can be shown or hidden from `client/config.json`, so a pra
 
 1. **Start the development server**:
    ```bash
+   npm install
    npm start
    ```
-   Server runs at `http://localhost:3000`
+   Vite serves the app at `http://localhost:3000`. The logging and WebSocket API runs on port 3001 and is proxied through Vite.
 
 2. **Choose a mode**:
    - Use the mode switcher buttons (if multiple modes are enabled)
@@ -323,18 +324,19 @@ modal.destroy();
 
 ## Server
 
-This template includes a local development server (`server.js`) that provides:
-- Static file serving for your application
-- WebSocket support for real-time messaging
-- A REST API for triggering client-side alerts
+Development uses Vite for the app and `server.js` for the API:
+
+- Vite serves the files in `client/` on port 3000 and proxies `/log` and `/message`
+- `server.js` accepts those requests and the WebSocket broadcast on port 3001
 
 ### Starting the Server
 
 ```bash
-node server.js
+npm install
+npm start
 ```
 
-The server will start on `http://localhost:3000` by default.
+The app is at `http://localhost:3000`. `npm run start:prod` serves `client/` from `server.js` without Vite.
 
 ### WebSocket Messaging API
 

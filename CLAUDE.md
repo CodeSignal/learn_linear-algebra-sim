@@ -20,23 +20,22 @@ This application also serves as a reference implementation of the **Bespoke fram
 ## Quick Start
 
 ```bash
-# Install dependencies (optional - only needed for WebSocket support)
+# Install dependencies (Vite dev server, plus WebSocket support)
 npm install
 
-# Start development server
+# Start development server (Vite on :3000, API on :3001)
 npm start
-# OR
-node server.js
 ```
 
-Access the application at `http://localhost:3000`. No build step required—this
-is pure HTML/CSS/JavaScript with no frameworks or bundlers.
+Access the application at `http://localhost:3000`. No application build step is
+required in development. `npm run start:prod` (or `node server.js`) serves
+`client/` directly without Vite.
 
 ## Key Architecture
 
 ### Technology Stack
 - **Frontend**: Vanilla JavaScript (ES6+), HTML5 Canvas, CSS3
-- **Backend**: Node.js HTTP server with optional WebSocket support
+- **Backend**: Vite dev server, plus a Node.js HTTP server for `/log`, `/message`, and optional WebSocket support
 - **Design Philosophy**: No frameworks, no build tools - educational clarity through simplicity
 
 ### Core Components

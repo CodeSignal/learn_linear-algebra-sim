@@ -20,10 +20,18 @@ across future Bespoke apps.
   - Returns *mutable* objects internally but callers must treat them as frozen
     because `linear-algebra.js` wraps them in `Object.freeze`.
   - Expose `clearCache()` for manual reloads/tests.
-- `operation-schemas.js` (`window.OperationSchemas`)\
-  - Source of truth for allowed operation group keys. Always run
-    `validateOperationGroups(mode, groups)` before wiring UI so that new config
-    flags cannot break the app.
+- `sidebar-sections.js` (`window.SidebarSections`)\
+  - `SIDEBAR_SECTIONS` is the source of truth for configurable section keys per
+    mode (vector, matrix, tensor).
+  - `resolveSections(mode, sections, legacyOperationGroups)` returns a frozen
+    `{ key: boolean }` map with every key. Accepts `{ "shown": bool }` or a
+    bare boolean; missing keys are shown; unknown keys and malformed values
+    `console.warn` and are ignored. `sections` overrides `operationGroups`.
+  - `applySections(root, sections)` removes `[data-section]` elements whose
+    flag is false, then removes `[data-section-container]` wrappers left
+    without sections. Removal is permanent for the page session, so callers
+    must run it before caching elements and must tolerate missing elements.
+  - `isShown(sections, key)` for logic that depends on a section.
 - `mode-manager.js` (`window.ModeManager`)\
   - Owns `.mode-content` visibility and the shared `CoordinateSystem`.
   - `renderModeButtons(enabledModes)` + `hideDisabledModeContainers(enabledModes)`
@@ -56,11 +64,33 @@ across future Bespoke apps.
   - Handles canvas sizing, grid/axis drawing, coordinate transforms, hover
     hit-testing helpers, and translated vector rendering. Register resize
     callbacks via `setResizeCallback`.
+  - Transforms use the active view `{ scale, offsetX, offsetY }` (pixels per
+    unit, origin offset from canvas center in pixels). Each 2D mode calls
+    `activateView(key)` (done by `ViewportController`) so pan/zoom is kept per
+    mode. `centerX`/`centerY` are getters for the origin's screen position.
+  - View API: `getScale()`, `panBy(dx, dy)`, `zoomAt(x, y, factor)` (clamped
+    to `styleConstants.viewport.minScale/maxScale`), `resetView()`,
+    `isDefaultView()`. Never read `styleConstants.gridSize` for drawing; use
+    `getScale()`.
+  - Grid lines and tick labels cover only the visible area, with spacing from
+    `getGridStep()`; tick labels pin to the canvas edge when an axis is
+    off-screen.
+- `viewport-controller.js` (`class ViewportController`)\
+  - Adds pan (middle/right drag, Space + left drag, or plain left drag with
+    `panWithPrimaryButton`) and cursor-anchored wheel/pinch zoom to a 2D mode.
+    Pan gestures are handled and stopped in the window capture phase so mode
+    canvas handlers never see them.
+  - Options: `viewKey`, `onChange` (throttled to one call per frame),
+    `panWithPrimaryButton`, `resetButton` (shown only when the view differs
+    from the default). Logs pans, zooms (debounced), and resets via
+    `logAction`. Modes must call `destroy()` in their own `destroy()`.
 - `vector.js` (`class Vector`)\
   - Immutable 2D vector with math helpers (`add`, `subtract`, `scale`, `dot`,
     projections, reflections, normalization, perpendicular, angle utilities).
     `Vector.defaultResultColor` should be overridden through `Vector.setDefaultResultColor`
     so that result vectors track the theme.
+  - `Vector.polarToCartesian(r, thetaDegrees)` returns `{x, y}` rounded to
+    1e-10 (so θ=90° gives x=0); use it for any polar input.
 - `results-panel.js` (`class ResultsPanel`)\
   - Lightweight wrapper that writes formula/result markup into a container.
     Use `.show(...lines)` and `.clear()` rather than manipulating DOM manually.

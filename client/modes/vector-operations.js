@@ -2,6 +2,11 @@
  * VectorOperations Class
  * Encapsulates vector math operations and result formatting
  * Returns operation results without side effects
+ *
+ * Operand vectors are user vectors created by VectorMode and carry:
+ * - label: display label with subscript (e.g. 'v₃')
+ * - subscript: subscript digits only (e.g. '₃')
+ * - name: plain-text name used in logs (e.g. 'v3')
  */
 
 class VectorOperations {
@@ -16,59 +21,71 @@ class VectorOperations {
   }
 
   /**
+   * Format a vector as [x, y]
+   * @param {Vector} vector - Vector to format
+   * @param {number} digits - Decimal places
+   * @returns {string} Formatted components
+   */
+  format(vector, digits = 1) {
+    return `[${vector.x.toFixed(digits)}, ${vector.y.toFixed(digits)}]`;
+  }
+
+  /**
+   * Format a vector for log messages: name (x, y)
+   * @param {Vector} vector - Vector to describe
+   * @returns {string} Log-friendly description
+   */
+  describe(vector) {
+    return `${vector.name} (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)})`;
+  }
+
+  /**
    * Perform vector addition
-   * @param {Vector} vector1 - First vector
-   * @param {Vector} vector2 - Second vector
+   * @param {Vector} vectorA - First operand
+   * @param {Vector} vectorB - Second operand
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  add(vector1, vector2) {
-    if (!vector1 || !vector2) return null;
+  add(vectorA, vectorB) {
+    if (!vectorA || !vectorB) return null;
 
-    const result = vector1.add(vector2);
-    result.label = 'v₁ + v₂';
+    const result = vectorA.add(vectorB);
+    result.label = `${vectorA.label} + ${vectorB.label}`;
 
-    // Log operation
-    logAction(`Add operation: v1 (${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}) + v2 (${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}). Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
+    logAction(`Add operation: ${this.describe(vectorA)} + ${this.describe(vectorB)}. Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
 
-    const formula = `v₁ + v₂ = [${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}] + [${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}]`;
-    const resultText = `= [${result.x.toFixed(1)}, ${result.y.toFixed(1)}]`;
+    const formula = `${vectorA.label} + ${vectorB.label} = ${this.format(vectorA)} + ${this.format(vectorB)}`;
+    const resultText = `= ${this.format(result)}`;
 
     return {
       resultVector: result,
-      parallelogramVectors: { v1: vector1, v2: vector2, negatedV2: null },
+      parallelogramVectors: { v1: vectorA, v2: vectorB, negatedV2: null },
       resultLines: [formula, resultText]
     };
   }
 
   /**
    * Perform vector subtraction
-   * @param {Vector} vector1 - First vector
-   * @param {Vector} vector2 - Second vector
+   * @param {Vector} vectorA - Minuend
+   * @param {Vector} vectorB - Subtrahend
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  subtract(vector1, vector2) {
-    if (!vector1 || !vector2) return null;
+  subtract(vectorA, vectorB) {
+    if (!vectorA || !vectorB) return null;
 
-    const result = vector1.subtract(vector2);
-    result.label = 'v₁ - v₂';
+    const result = vectorA.subtract(vectorB);
+    result.label = `${vectorA.label} - ${vectorB.label}`;
 
-    // Log operation
-    logAction(`Subtract operation: v1 (${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}) - v2 (${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}). Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
+    logAction(`Subtract operation: ${this.describe(vectorA)} - ${this.describe(vectorB)}. Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
 
-    // Create negated v2 for parallelogram visualization (v1 - v2 = v1 + (-v2))
-    const negV2 = new Vector(
-      -vector2.x,
-      -vector2.y,
-      vector2.color,
-      '-v₂'
-    );
+    // Negated B for parallelogram visualization (a - b = a + (-b))
+    const negB = new Vector(-vectorB.x, -vectorB.y, vectorB.color, `-${vectorB.label}`);
 
-    const formula = `v₁ - v₂ = [${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}] - [${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}]`;
-    const resultText = `= [${result.x.toFixed(1)}, ${result.y.toFixed(1)}]`;
+    const formula = `${vectorA.label} - ${vectorB.label} = ${this.format(vectorA)} - ${this.format(vectorB)}`;
+    const resultText = `= ${this.format(result)}`;
 
     return {
       resultVector: result,
-      parallelogramVectors: { v1: vector1, v2: negV2, negatedV2: negV2 },
+      parallelogramVectors: { v1: vectorA, v2: negB, negatedV2: negB },
       resultLines: [formula, resultText]
     };
   }
@@ -77,21 +94,19 @@ class VectorOperations {
    * Perform scalar multiplication
    * @param {Vector} vector - Vector to scale
    * @param {number} scalar - Scalar value
-   * @param {number} vectorNum - Vector number (1 or 2) for labeling
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  scale(vector, scalar, vectorNum) {
+  scale(vector, scalar) {
     if (!vector || isNaN(scalar)) return null;
 
     const result = vector.scale(scalar);
-    result.label = `${scalar}v${vectorNum === 1 ? '₁' : '₂'}`;
-    result.color = this.styleConstants.colors.result;  // Use green for scaled vectors
+    result.label = `${scalar}${vector.label}`;
+    result.color = this.styleConstants.colors.result;
 
-    // Log operation
-    logAction(`Scale operation: v${vectorNum} (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}) * ${scalar}. Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
+    logAction(`Scale operation: ${this.describe(vector)} * ${scalar}. Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
 
-    const formula = `${scalar}v${vectorNum} = ${scalar} × [${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}]`;
-    const resultText = `= [${result.x.toFixed(1)}, ${result.y.toFixed(1)}]`;
+    const formula = `${scalar}${vector.label} = ${scalar} × ${this.format(vector)}`;
+    const resultText = `= ${this.format(result)}`;
 
     return {
       resultVector: result,
@@ -103,20 +118,19 @@ class VectorOperations {
 
   /**
    * Perform dot product
-   * @param {Vector} vector1 - First vector
-   * @param {Vector} vector2 - Second vector
+   * @param {Vector} vectorA - First operand
+   * @param {Vector} vectorB - Second operand
    * @returns {Object} Operation result with formatted strings
    */
-  dot(vector1, vector2) {
-    if (!vector1 || !vector2) return null;
+  dot(vectorA, vectorB) {
+    if (!vectorA || !vectorB) return null;
 
-    const dotProduct = vector1.dot(vector2);
+    const dotProduct = vectorA.dot(vectorB);
 
-    // Log operation
-    logAction(`Dot product: v1 (${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}) · v2 (${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}). Result: ${dotProduct.toFixed(2)}`);
+    logAction(`Dot product: ${this.describe(vectorA)} · ${this.describe(vectorB)}. Result: ${dotProduct.toFixed(2)}`);
 
-    const formula = `v₁ · v₂ = [${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}] · [${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}]`;
-    const calculation = `= (${vector1.x.toFixed(1)} × ${vector2.x.toFixed(1)}) + (${vector1.y.toFixed(1)} × ${vector2.y.toFixed(1)})`;
+    const formula = `${vectorA.label} · ${vectorB.label} = ${this.format(vectorA)} · ${this.format(vectorB)}`;
+    const calculation = `= (${vectorA.x.toFixed(1)} × ${vectorB.x.toFixed(1)}) + (${vectorA.y.toFixed(1)} × ${vectorB.y.toFixed(1)})`;
     const resultText = `= ${dotProduct.toFixed(2)}`;
 
     return {
@@ -129,26 +143,36 @@ class VectorOperations {
 
   /**
    * Perform projection
-   * @param {Vector} vector1 - Vector to project
-   * @param {Vector} vector2 - Vector to project onto
+   * @param {Vector} vectorA - Vector to project
+   * @param {Vector} vectorB - Vector to project onto
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  project(vector1, vector2) {
-    if (!vector1 || !vector2) return null;
+  project(vectorA, vectorB) {
+    if (!vectorA || !vectorB) return null;
 
-    const result = vector1.projectOnto(vector2);
-    result.label = 'proj_v₂(v₁)';
+    const a = vectorA.label;
+    const b = vectorB.label;
+    const mag2Squared = vectorB.x * vectorB.x + vectorB.y * vectorB.y;
 
-    // Log operation
-    logAction(`Project operation: v1 (${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}) onto v2 (${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}). Result: (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`);
+    if (mag2Squared === 0) {
+      return {
+        resultVector: null,
+        clearParallelogram: true,
+        clearAngleArc: true,
+        resultLines: [`proj_${b}(${a}) is undefined`, `${b} is the zero vector`]
+      };
+    }
 
-    const dotProduct = vector1.dot(vector2);
-    const mag2Squared = vector2.x * vector2.x + vector2.y * vector2.y;
-    const scalar = dotProduct / mag2Squared;
+    const result = vectorA.projectOnto(vectorB);
+    result.label = `proj_${b}(${a})`;
 
-    const formula = `proj_v₂(v₁) = ((v₁·v₂)/(v₂·v₂)) × v₂`;
-    const calculation = `= ((${dotProduct.toFixed(2)})/(${mag2Squared.toFixed(2)})) × [${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}]`;
-    const resultText = `= [${result.x.toFixed(2)}, ${result.y.toFixed(2)}]`;
+    logAction(`Project operation: ${this.describe(vectorA)} onto ${this.describe(vectorB)}. Result: (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`);
+
+    const dotProduct = vectorA.dot(vectorB);
+
+    const formula = `proj_${b}(${a}) = ((${a}·${b})/(${b}·${b})) × ${b}`;
+    const calculation = `= ((${dotProduct.toFixed(2)})/(${mag2Squared.toFixed(2)})) × ${this.format(vectorB)}`;
+    const resultText = `= ${this.format(result, 2)}`;
 
     return {
       resultVector: result,
@@ -160,33 +184,34 @@ class VectorOperations {
 
   /**
    * Calculate angle between vectors
-   * @param {Vector} vector1 - First vector
-   * @param {Vector} vector2 - Second vector
+   * @param {Vector} vectorA - First operand
+   * @param {Vector} vectorB - Second operand
    * @returns {Object} Operation result with angle arc state and formatted strings
    */
-  angleBetween(vector1, vector2) {
-    if (!vector1 || !vector2) return null;
+  angleBetween(vectorA, vectorB) {
+    if (!vectorA || !vectorB) return null;
 
-    const angleRad = vector1.angleBetween(vector2);
-    const angleDeg = vector1.angleBetweenDegrees(vector2);
+    const angleRad = vectorA.angleBetween(vectorB);
+    const angleDeg = vectorA.angleBetweenDegrees(vectorB);
 
-    // Log operation
-    logAction(`Angle between: v1 (${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}) and v2 (${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}). Result: ${angleDeg.toFixed(2)}°`);
+    logAction(`Angle between: ${this.describe(vectorA)} and ${this.describe(vectorB)}. Result: ${angleDeg.toFixed(2)}°`);
 
-    const dotProduct = vector1.dot(vector2);
-    const mag1 = vector1.magnitude();
-    const mag2 = vector2.magnitude();
+    const a = vectorA.label;
+    const b = vectorB.label;
+    const dotProduct = vectorA.dot(vectorB);
+    const magA = vectorA.magnitude();
+    const magB = vectorB.magnitude();
 
-    const formula = `θ = arccos((v₁·v₂)/(||v₁||×||v₂||))`;
-    const calculation = `= arccos((${dotProduct.toFixed(2)})/(${mag1.toFixed(2)}×${mag2.toFixed(2)}))`;
+    const formula = `θ = arccos((${a}·${b})/(||${a}||×||${b}||))`;
+    const calculation = `= arccos((${dotProduct.toFixed(2)})/(${magA.toFixed(2)}×${magB.toFixed(2)}))`;
     const resultText = `= ${angleDeg.toFixed(2)}° (${angleRad.toFixed(3)} radians)`;
 
     return {
       resultVector: null,
       clearParallelogram: true,
       angleArcState: {
-        vector1: vector1,
-        vector2: vector2,
+        vector1: vectorA,
+        vector2: vectorB,
         angleRadians: angleRad,
         angleDegrees: angleDeg
       },
@@ -197,24 +222,23 @@ class VectorOperations {
   /**
    * Normalize a vector
    * @param {Vector} vector - Vector to normalize
-   * @param {number} vectorNum - Vector number (1 or 2) for labeling
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  normalize(vector, vectorNum) {
+  normalize(vector) {
     if (!vector) return null;
 
+    const unitLabel = `û${vector.subscript}`;
     const result = vector.normalize();
-    result.label = vectorNum === 1 ? 'û₁' : 'û₂';
-    result.color = this.styleConstants.colors.result;  // Use green for normalized vectors
+    result.label = unitLabel;
+    result.color = this.styleConstants.colors.result;
     result.lineWidth = 4;  // Thicker line for better visibility
 
-    // Log operation
-    logAction(`Normalize operation: v${vectorNum} (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}). Result: (${result.x.toFixed(3)}, ${result.y.toFixed(3)})`);
+    logAction(`Normalize operation: ${this.describe(vector)}. Result: (${result.x.toFixed(3)}, ${result.y.toFixed(3)})`);
 
     const mag = vector.magnitude();
-    const formula = `û${vectorNum} = v${vectorNum}/||v${vectorNum}||`;
-    const calculation = `= [${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}]/${mag.toFixed(2)}`;
-    const resultText = `= [${result.x.toFixed(3)}, ${result.y.toFixed(3)}] (magnitude = 1.0)`;
+    const formula = `${unitLabel} = ${vector.label}/||${vector.label}||`;
+    const calculation = `= ${this.format(vector)}/${mag.toFixed(2)}`;
+    const resultText = `= ${this.format(result, 3)} (magnitude = 1.0)`;
 
     return {
       resultVector: result,
@@ -227,22 +251,20 @@ class VectorOperations {
   /**
    * Get perpendicular vector
    * @param {Vector} vector - Vector to get perpendicular of
-   * @param {number} vectorNum - Vector number (1 or 2) for labeling
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  perpendicular(vector, vectorNum) {
+  perpendicular(vector) {
     if (!vector) return null;
 
+    const perpLabel = `${vector.label}⊥`;
     const result = vector.perpendicular();
-    result.label = vectorNum === 1 ? 'v₁⊥' : 'v₂⊥';
-    result.color = vectorNum === 1 ? this.styleConstants.colors.vector1 : this.styleConstants.colors.vector2;
+    result.label = perpLabel;
+    result.color = vector.color;
 
-    // Log operation
-    logAction(`Perpendicular operation: v${vectorNum} (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}). Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
+    logAction(`Perpendicular operation: ${this.describe(vector)}. Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
 
-    const formula = `v${vectorNum}⊥ = [-y, x] (90° rotation)`;
-    const calculation = `= [${-vector.y.toFixed(1)}, ${vector.x.toFixed(1)}]`;
-    const resultText = `= [${result.x.toFixed(1)}, ${result.y.toFixed(1)}]`;
+    const formula = `${perpLabel} = [-y, x] (90° rotation)`;
+    const resultText = `= ${this.format(result)}`;
 
     return {
       resultVector: result,
@@ -255,43 +277,41 @@ class VectorOperations {
   /**
    * Reflect a vector
    * @param {Vector} vector - Vector to reflect
-   * @param {number} vectorNum - Vector number (1 or 2) for labeling
    * @param {string} reflectionType - 'x-axis', 'y-axis', or 'diagonal'
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  reflect(vector, vectorNum, reflectionType) {
+  reflect(vector, reflectionType) {
     if (!vector) return null;
 
+    const label = vector.label;
     let result, axis, formula;
 
-    // Perform the appropriate reflection
-    switch(reflectionType) {
+    switch (reflectionType) {
       case 'x-axis':
         result = vector.reflectX();
-        result.label = `v${vectorNum}_reflₓ`;
+        result.label = `${label}_reflₓ`;
         axis = 'X-axis';
-        formula = `Reflect v${vectorNum} across X-axis: (x, y) → (x, -y)`;
+        formula = `Reflect ${label} across X-axis: (x, y) → (x, -y)`;
         break;
       case 'y-axis':
         result = vector.reflectY();
-        result.label = `v${vectorNum}_refly`;
+        result.label = `${label}_refly`;
         axis = 'Y-axis';
-        formula = `Reflect v${vectorNum} across Y-axis: (x, y) → (-x, y)`;
+        formula = `Reflect ${label} across Y-axis: (x, y) → (-x, y)`;
         break;
       case 'diagonal':
         result = vector.reflectDiagonal();
-        result.label = `v${vectorNum}_reflᵈ`;
+        result.label = `${label}_reflᵈ`;
         axis = 'diagonal (y=x)';
-        formula = `Reflect v${vectorNum} across y=x: (x, y) → (y, x)`;
+        formula = `Reflect ${label} across y=x: (x, y) → (y, x)`;
         break;
       default:
         return null;
     }
 
-    // Log operation
-    logAction(`Reflect ${axis}: v${vectorNum} (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}). Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
+    logAction(`Reflect ${axis}: ${this.describe(vector)}. Result: (${result.x.toFixed(1)}, ${result.y.toFixed(1)})`);
 
-    const calculation = `[${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}] → [${result.x.toFixed(1)}, ${result.y.toFixed(1)}]`;
+    const calculation = `${this.format(vector)} → ${this.format(result)}`;
 
     return {
       resultVector: result,
@@ -302,49 +322,49 @@ class VectorOperations {
   }
 
   /**
-   * Perform linear combination
-   * @param {Vector} vector1 - First vector
-   * @param {Vector} vector2 - Second vector
-   * @param {number} scalarA - Scalar for vector1
-   * @param {number} scalarB - Scalar for vector2
+   * Perform linear combination a·A + b·B
+   * @param {Vector} vectorA - First operand
+   * @param {Vector} vectorB - Second operand
+   * @param {number} scalarA - Scalar for vectorA
+   * @param {number} scalarB - Scalar for vectorB
    * @returns {Object} Operation result with result vector and formatted strings
    */
-  linearCombination(vector1, vector2, scalarA, scalarB) {
-    if (!vector1 || !vector2 || isNaN(scalarA) || isNaN(scalarB)) return null;
+  linearCombination(vectorA, vectorB, scalarA, scalarB) {
+    if (!vectorA || !vectorB || isNaN(scalarA) || isNaN(scalarB)) return null;
 
-    // Calculate scaled vectors with proper labels
-    const scaledV1 = vector1.scale(scalarA);
-    scaledV1.label = `${scalarA}v₁`;
-    scaledV1.color = this.styleConstants.parallelogram.v1CopyColor; // Use parallelogram v1 color for consistency
+    const termA = `${scalarA}${vectorA.label}`;
+    const termB = `${scalarB}${vectorB.label}`;
 
-    const scaledV2 = vector2.scale(scalarB);
-    scaledV2.label = `${scalarB}v₂`;
-    scaledV2.color = this.styleConstants.parallelogram.v2CopyColor; // Use parallelogram v2 color for consistency
+    const scaledA = vectorA.scale(scalarA);
+    scaledA.label = termA;
+    scaledA.color = vectorA.color;
 
-    // Calculate result: av₁ + bv₂
+    const scaledB = vectorB.scale(scalarB);
+    scaledB.label = termB;
+    scaledB.color = vectorB.color;
+
     const result = new Vector(
-      scaledV1.x + scaledV2.x,
-      scaledV1.y + scaledV2.y,
+      scaledA.x + scaledB.x,
+      scaledA.y + scaledB.y,
       this.styleConstants.colors.result,
-      `${scalarA}v₁ + ${scalarB}v₂`
+      `${termA} + ${termB}`
     );
 
-    // Log operation
-    logAction(`Linear combination: ${scalarA}v1 + ${scalarB}v2. Result: (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`);
+    logAction(`Linear combination: ${scalarA}${vectorA.name} + ${scalarB}${vectorB.name}. Result: (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`);
 
-    const formula = `${scalarA}v₁ + ${scalarB}v₂`;
-    const calculation = `= ${scalarA}[${vector1.x.toFixed(1)}, ${vector1.y.toFixed(1)}] + ${scalarB}[${vector2.x.toFixed(1)}, ${vector2.y.toFixed(1)}]`;
-    const resultText = `= [${result.x.toFixed(2)}, ${result.y.toFixed(2)}]`;
+    const formula = `${termA} + ${termB}`;
+    const calculation = `= ${scalarA}${this.format(vectorA)} + ${scalarB}${this.format(vectorB)}`;
+    const resultText = `= ${this.format(result, 2)}`;
 
     return {
       resultVector: result,
       parallelogramVectors: {
-        v1: scaledV1,
-        v2: scaledV2,
+        v1: scaledA,
+        v2: scaledB,
         negatedV2: null,
         isLinearCombination: true,
-        scaledV1: scaledV1,
-        scaledV2: scaledV2,
+        scaledV1: scaledA,
+        scaledV2: scaledB,
         scalarA: scalarA,
         scalarB: scalarB
       },
@@ -352,4 +372,3 @@ class VectorOperations {
     };
   }
 }
-

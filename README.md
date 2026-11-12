@@ -7,7 +7,8 @@ An interactive educational tool for learning vector operations through visual ex
 ## Features
 
 ### Core Functionality
-- **Interactive Vector Creation**: Click and drag on the grid to create vectors (up to 2 simultaneously)
+- **Interactive Vector Creation**: Click and drag on the grid to create vectors (up to 12, each with its own color)
+- **Choose Your Operands**: Every operation has dropdowns to pick which vectors it uses
 - **Real-time Calculations**: View coordinates, magnitude, and angle for each vector
 - **Animated Operations**: Smooth transitions showing vector transformations
 - **Formula Display**: Mathematical formulas and calculations shown for each operation
@@ -31,6 +32,31 @@ The application supports three interaction modes:
 
 Modes can be enabled/disabled via the `enabledModes` array in `client/config.json`. The default mode is set via the `mode` property in the config file.
 
+### Configuring the Sidebar
+
+Every sidebar section can be shown or hidden from `client/config.json`, so a practice can expose only the tools it needs. Students cannot change this from the page: hidden sections are removed, not just styled away.
+
+```json
+"vectorMode": {
+  "sections": {
+    "addition": { "shown": true },
+    "dotProduct": { "shown": false }
+  }
+}
+```
+
+| Mode | Section keys |
+|------|--------------|
+| `vectorMode` | `coordinateMode`, `reset`, `vectorList`, `addition`, `scalarMultiplication`, `dotProduct`, `projectionAngle`, `normalization`, `perpendicular`, `reflection`, `linearCombination` |
+| `matrixMode` | `reset`, `addition`, `scalarMultiplication`, `multiplication`, `linearTransformation`, `determinant` |
+| `tensorMode` | `reset`, `rank0`, `rank1`, `rank2`, `rank3`, `controlsHint` |
+
+- Sections left out of the config are shown. Misspelled keys are ignored with a warning in the browser console.
+- The "Operations" heading disappears when every operation in it is hidden.
+- Matrix mode's `includeVector` still applies: with a vector, the two-matrix operations stay hidden; without one, `linearTransformation` stays hidden.
+- In Tensor mode, the first visible rank is selected on load, and the rank selector disappears when only one rank is visible.
+- The older `operationGroups` booleans (e.g. `"dotProduct": false`) still work; `sections` takes precedence.
+
 ### User Interface
 - **Left Sidebar**: Control panel with mode-specific information and operation buttons
 - **Main Canvas**: Full-screen coordinate plane (2D for vector/matrix modes, 3D for tensor mode)
@@ -51,9 +77,9 @@ Modes can be enabled/disabled via the `enabledModes` array in `client/config.jso
    - Available modes: Vector, Matrix, Tensor
 
 3. **Vector Mode**:
-   - Click and drag anywhere on the grid to create vectors
-   - First vector (v₁) will be red, second vector (v₂) will be blue
-   - Use buttons in the left sidebar to perform operations
+   - Click and drag anywhere on the grid to create vectors (v₁ to v₁₂), or press + in the sidebar and type the coordinates
+   - Drag a vector's tip, or type into its sidebar fields (x/y in Cartesian, r/θ° in Polar), to change it; press × to remove it
+   - Pick operands from each operation's dropdowns, then press its button
    - Watch animated results and read formulas in the Results section
 
 4. **Matrix Mode**:
@@ -88,7 +114,8 @@ learn-bespoke-linear-algebra/
 │   │   ├── config.js                 # Config service
 │   │   ├── mode-manager.js           # Mode switching
 │   │   ├── theme-service.js          # Theme management
-│   │   ├── coordinate-system.js      # Coordinate system
+│   │   ├── coordinate-system.js      # Coordinate system (per-mode pan/zoom view)
+│   │   ├── viewport-controller.js    # Pan + zoom input for 2D modes
 │   │   └── ...                       # Other core services
 │   ├── modes/                        # Mode controllers
 │   │   ├── vector-mode.js            # Vector mode controller
@@ -133,16 +160,15 @@ Mathematical vector class with:
 - High DPI display support
 
 ### Configuration
-Edit `CONFIG` object in `linear-algebra.js`:
+Edit the `STYLE_CONSTANTS` object in `linear-algebra.js`:
 ```javascript
-const CONFIG = {
+const STYLE_CONSTANTS = {
   gridSize: 40,           // pixels per unit
   arrowHeadSize: 12,      // pixels
   vectorLineWidth: 3,
   animationDuration: 800, // milliseconds
   colors: {
-    vector1: '#ef4444',   // red
-    vector2: '#3b82f6',   // blue
+    vectorPalette: ['#ef4444', '#3b82f6', /* ...one color per vector, 12 total */],
     result: '#10b981',    // green
     // ...
   }

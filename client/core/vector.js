@@ -55,6 +55,18 @@ class Vector {
    * @param {string} mode - 'cartesian' or 'polar'
    * @returns {string} - Formatted coordinate string
    */
+  /**
+   * Convert polar coordinates to Cartesian components
+   * @param {number} r - Magnitude
+   * @param {number} thetaDegrees - Angle from the positive x-axis, in degrees
+   * @returns {object} - {x, y}, rounded so e.g. θ=90° gives x=0 rather than 6e-17
+   */
+  static polarToCartesian(r, thetaDegrees) {
+    const theta = thetaDegrees * (Math.PI / 180);
+    const round = (value) => Math.round(value * 1e10) / 1e10 || 0;
+    return { x: round(r * Math.cos(theta)), y: round(r * Math.sin(theta)) };
+  }
+
   formatCoordinates(mode = 'cartesian') {
     if (mode === 'polar') {
       const polar = this.toPolar();

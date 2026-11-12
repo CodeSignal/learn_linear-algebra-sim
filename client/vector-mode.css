@@ -1,74 +1,176 @@
 /* Vector Mode Specific Styles */
 
-/* Vector Mode Color Variables */
-/* Intentional: Domain-specific colors for visual differentiation of vectors.
-   These hardcoded colors are kept separate from design system tokens to maintain
-   clear visual distinction between vector 1 (red) and vector 2 (blue) in the canvas. */
-.mode-content[data-mode="vector"] {
-  --vector-1-color: #ef4444;
-  --vector-2-color: #3b82f6;
+/* Vector List */
+.vector-list-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--UI-Spacing-spacing-mxs);
 }
 
-@media (prefers-color-scheme: dark) {
-  .mode-content[data-mode="vector"] {
-    --vector-1-color: #f87171; /* Lighter red for dark bg */
-    --vector-2-color: #60a5fa; /* Lighter blue for dark bg */
-  }
+.vector-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
 }
 
-/* Vector Controls */
-.vector-control {
-  /* Extend shared control-card styles */
-  background: var(--Colors-Backgrounds-Main-Medium);
-  border-radius: var(--UI-Radius-radius-xs);
-  padding: var(--UI-Spacing-spacing-mxs);
-  border: 1px solid var(--Colors-Stroke-Default);
-}
-
-.vector-control h3 {
-  margin: 0 0 var(--UI-Spacing-spacing-mxs) 0;
-  color: var(--Colors-Text-Body-Default);
+.vector-list-actions {
   display: flex;
   align-items: center;
   gap: var(--UI-Spacing-spacing-s);
+}
+
+.bespoke .vector-list-actions .vector-add {
+  min-width: unset;
+  padding: 0 var(--UI-Spacing-spacing-s);
+  font-size: 1.1em;
+}
+
+.vector-count {
+  color: var(--Colors-Text-Body-Light);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.vector-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--UI-Spacing-spacing-xxs);
+}
+
+.vector-list-empty {
+  margin: 0;
+  color: var(--Colors-Text-Body-Light);
+}
+
+.vector-row {
+  display: flex;
+  align-items: center;
+  gap: var(--UI-Spacing-spacing-xs);
+  background: var(--Colors-Backgrounds-Main-Medium);
+  border-radius: var(--UI-Radius-radius-xs);
+  padding: var(--UI-Spacing-spacing-xxs) var(--UI-Spacing-spacing-s);
+  border: 1px solid var(--Colors-Stroke-Default);
 }
 
 /* Intentional exception: Times New Roman for math notation (vector labels like v₁) */
 .vector-label {
   font-family: 'Times New Roman', serif;
   font-style: italic;
+  font-weight: 700;
   font-size: 1.1em;
+  min-width: 2.2em;
+  flex-shrink: 0;
 }
 
-.v1-color {
-  color: var(--vector-1-color);
+.vector-row-draft {
+  border-style: dashed;
 }
 
-.v2-color {
-  color: var(--vector-2-color);
+/* Coordinate fields: a compact Design System input box with an x/y/r/θ prefix */
+.bespoke .vector-row .coord-field {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: var(--UI-Input-xs);
+  padding: 0 var(--UI-Spacing-spacing-xs);
+  gap: var(--UI-Spacing-spacing-xxs);
+  font-size: inherit;
+  line-height: inherit;
+  cursor: text;
 }
 
-.vector-info {
+.bespoke .vector-row .coord-field:focus-within {
+  border-color: var(--Colors-Input-Border-Focus);
+  box-shadow: 0 0 0 3px var(--Colors-Input-Shadow-Focus);
+}
+
+.bespoke .vector-row .coord-field.is-invalid {
+  border-color: var(--Colors-Alert-Error-Default);
+}
+
+/* Intentional exception: Times New Roman for math notation (x, y, r, θ) */
+.coord-prefix {
+  font-family: 'Times New Roman', serif;
+  font-style: italic;
+  color: var(--Colors-Text-Body-Light);
+  flex-shrink: 0;
+}
+
+.coord-suffix {
+  color: var(--Colors-Text-Body-Light);
+  flex-shrink: 0;
+}
+
+.coord-suffix:empty {
+  display: none;
+}
+
+.coord-input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: inherit;
+}
+
+.vector-row-magnitude {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--Colors-Text-Body-Light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.vector-row-magnitude[hidden] {
+  display: none;
+}
+
+.bespoke .vector-row .vector-remove,
+.bespoke .vector-row .vector-draft-confirm,
+.bespoke .vector-row .vector-draft-cancel {
+  min-width: unset;
+  padding: 0 var(--UI-Spacing-spacing-s);
+  flex-shrink: 0;
+}
+
+/* Operand selection */
+.operand-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: var(--UI-Spacing-spacing-s);
 }
 
-.info-row {
-  display: flex;
-  justify-content: space-between;
+.operand-row > .operand-select,
+.operand-row > .scalar-input {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
-.info-row .label {
+.bespoke .operand-row > .scalar-input {
+  text-align: center;
+}
+
+.operand-symbol {
   color: var(--Colors-Text-Body-Light);
-  font-weight: 500;
+  flex-shrink: 0;
 }
 
-.info-row .value {
-  color: var(--Colors-Text-Body-Default);
-  font-family: 'JetBrains Mono', monospace;
+/* Operand dropdowns sit side by side, so the menu tracks the toggle width
+   instead of the Design System's fixed 240px panel. */
+.bespoke .operand-select .dropdown-menu {
+  width: 100%;
+  min-width: 0;
 }
 
+.bespoke .operand-select .dropdown-menu-item,
+.bespoke .operand-select .dropdown-menu-item.selected {
+  width: 100%;
+}
+
+/* Shared with matrix mode's scalar multiplication row */
 .scalar-control {
   display: flex;
   flex-wrap: wrap;
@@ -93,62 +195,30 @@
   min-width: 140px;
 }
 
-
-.reflection-control {
-  display: flex;
-  flex-direction: column;
-  gap: var(--UI-Spacing-spacing-mxs);
-  margin-top: var(--UI-Spacing-spacing-mxs);
-  padding-top: var(--UI-Spacing-spacing-mxs);
-  border-top: 1px solid var(--Colors-Stroke-Default);
-}
-
-.reflection-control > div {
-  width: 100%;
-}
-
-.normalize-control {
-  display: flex;
-  flex-direction: column;
-  gap: var(--UI-Spacing-spacing-mxs);
-}
-
-.normalize-control > div {
-  width: 100%;
-}
-
-.perpendicular-control {
-  display: flex;
-  flex-direction: column;
-  gap: var(--UI-Spacing-spacing-mxs);
-}
-
-.perpendicular-control > div {
-  width: 100%;
-}
-
+/* Linear combination */
 .linear-combo-control {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--UI-Spacing-spacing-s);
+}
+
+.linear-combo-term {
+  display: flex;
   align-items: center;
+  gap: var(--UI-Spacing-spacing-s);
 }
 
-.bespoke .linear-combo-control input[type="number"] {
-  flex: 1 1 calc(50% - 4px);
-  min-width: 60px;
-  text-align: center;
+.linear-combo-term > #lc-scalar-a,
+.linear-combo-term > #lc-scalar-b {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.linear-combo-control > #lc-scalar-a,
-.linear-combo-control > #lc-scalar-b {
-  flex: 1 1 calc(50% - 4px);
-  min-width: 60px;
+.linear-combo-term > .operand-select {
+  flex: 0 0 90px;
 }
 
 .linear-combo-control .button {
-  flex: 1 1 100%;
   margin-top: var(--UI-Spacing-spacing-xxs);
   min-width: unset;
 }
-

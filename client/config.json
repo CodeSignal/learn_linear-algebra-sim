@@ -2,27 +2,41 @@
   "defaultMode": "vector",
   "enabledModes": ["vector", "matrix", "tensor"],
   "vectorMode": {
-    "maxVectors": 2,
-    "operationGroups": {
-      "addition": true,
-      "scalarMultiplication": true,
-      "dotProduct": true,
-      "projectionAngle": true,
-      "normalization": true,
-      "perpendicular": true,
-      "reflection": true,
-      "linearCombination": true
+    "maxVectors": 12,
+    "sections": {
+      "coordinateMode": { "shown": true },
+      "reset": { "shown": true },
+      "vectorList": { "shown": true },
+      "addition": { "shown": true },
+      "scalarMultiplication": { "shown": true },
+      "dotProduct": { "shown": true },
+      "projectionAngle": { "shown": true },
+      "normalization": { "shown": true },
+      "perpendicular": { "shown": true },
+      "reflection": { "shown": true },
+      "linearCombination": { "shown": true }
     }
   },
   "matrixMode": {
     "maxMatrices": 2,
     "includeVector": true,
-    "operationGroups": {
-      "addition": true,
-      "scalarMultiplication": true,
-      "multiplication": true,
-      "determinant": true,
-      "linearTransformation": true
+    "sections": {
+      "reset": { "shown": true },
+      "addition": { "shown": true },
+      "scalarMultiplication": { "shown": true },
+      "multiplication": { "shown": true },
+      "linearTransformation": { "shown": true },
+      "determinant": { "shown": true }
+    }
+  },
+  "tensorMode": {
+    "sections": {
+      "reset": { "shown": true },
+      "rank0": { "shown": true },
+      "rank1": { "shown": true },
+      "rank2": { "shown": true },
+      "rank3": { "shown": true },
+      "controlsHint": { "shown": true }
     }
   }
 }

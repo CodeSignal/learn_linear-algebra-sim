@@ -58,9 +58,11 @@ this file first, then the nested `AGENTS.md` files (`client/`, `client/core/`,
   recovery. Implement retry loops for save workflows and surface
   `QuotaExceededError` when touching localStorage.
 - **Config**: Fetch `client/config.json` via `ConfigService`. Treat the returned
-  object as immutable (it is `Object.freeze`d in `linear-algebra.js`). Validate
-  operation groups with `OperationSchemas.validateOperationGroups` before
-  binding UI or enabling controls.
+  object as immutable (it is `Object.freeze`d in `linear-algebra.js`). Sidebar
+  visibility is config-only: `linear-algebra.js` resolves each
+  `<mode>Mode.sections` map with `SidebarSections.resolveSections`, and modes
+  strip hidden sections with `SidebarSections.applySections` before binding UI.
+  Never add user-facing toggles for section visibility.
 - **Mode lifecycle**: Register modes with `ModeManager.registerMode(name,
   factory)` and switch via `ModeManager.setMode()`. Factories must return an
   object exposing `destroy()` to remove DOM/canvas listeners and unsubscribe
@@ -76,9 +78,10 @@ this file first, then the nested `AGENTS.md` files (`client/`, `client/core/`,
   per-mode canvases.
 - **HTML contract**: Keep `<body class="bespoke">`. Preserve script order as
   in `client/index.html`: `help-modal.js` → `logger.js` → core services
-  (`status.js`, `config.js`, `operation-schemas.js`, `help.js`,
+  (`status.js`, `config.js`, `sidebar-sections.js`, `help.js`,
   `mode-manager.js`, `color-utils.js`, `theme-service.js`, `results-panel.js`,
-  `format-utils.js`, `vector.js`, `animator.js`, `coordinate-system.js`) →
+  `format-utils.js`, `vector.js`, `animator.js`, `coordinate-system.js`,
+  `viewport-controller.js`) →
   `app.js` → entities (`entities/matrix.js`) → mode scripts
   (`vector-*`, `matrix-*`, `tensor-*`) → `linear-algebra.js` entrypoint. New
   shared utilities belong with the core block; new modes load with other mode

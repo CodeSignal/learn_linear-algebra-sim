@@ -10,6 +10,9 @@ class MatrixMode {
     this.coordSystem = coordinateSystem;
     this.root = rootElement;
 
+    // Must run before DOM elements are cached
+    this.applySidebarSections();
+
     // Cache frequently used DOM elements
     this.elements = {
       // Matrix A inputs
@@ -103,8 +106,16 @@ class MatrixMode {
       });
     }
 
+    // Matrix mode has no canvas drag of its own, so plain left drag pans too
+    this.viewport = new ViewportController(this.coordSystem.canvas, this.coordSystem, {
+      viewKey: 'matrix',
+      panWithPrimaryButton: true,
+      resetButton: document.getElementById('reset-view'),
+      onChange: () => this.render()
+    });
+    this.coordSystem.setResizeCallback(() => this.render());
+
     this.setupEventListeners();
-    this.applyOperationGroupVisibility();
     this.applyMatrixVisibility();
     this.updateButtonStates(); // Initialize button states
   }
@@ -173,43 +184,24 @@ class MatrixMode {
   // APP-CONFIG-DRIVEN UI VISIBILITY
   // ============================================================================
 
-  applyOperationGroupVisibility() {
-    // Get config from appConfig
+  /**
+   * Remove sidebar sections hidden by config.json (matrixMode.sections).
+   * includeVector also overrides the config: with a vector, the two-matrix
+   * operations are hidden; without one, the linear transformation is hidden.
+   */
+  applySidebarSections() {
+    if (!window.SidebarSections) return;
+
     const matrixConfig = this.appConfig.matrixMode || {};
-    const operationGroups = matrixConfig.operationGroups || {};
-    const includeVector = matrixConfig.includeVector || false;
-
-    const shouldShowGroup = (groupName) => {
-      // First check includeVector override rules
-      if (includeVector) {
-        // Hide two-matrix operations when vector mode is active
-        if (groupName === 'addition' || groupName === 'scalarMultiplication' || groupName === 'multiplication') {
-          return false;
-        }
-      } else {
-        // Hide linear transformation when vector is not included
-        if (groupName === 'linearTransformation') {
-          return false;
-        }
-      }
-
-      // Then check if the operation group is enabled in configuration
-      if (operationGroups[groupName] === false) {
-        return false;
-      }
-      return true;
-    };
-
-    // Show/hide operation groups based on configuration
-    const operationGroupElements = this.root.querySelectorAll('[data-operation-group]');
-    operationGroupElements.forEach(element => {
-      const groupName = element.getAttribute('data-operation-group');
-      if (shouldShowGroup(groupName)) {
-        element.style.display = '';
-      } else {
-        element.style.display = 'none';
-      }
-    });
+    const sections = { ...(matrixConfig.sections || {}) };
+    if (matrixConfig.includeVector) {
+      sections.addition = false;
+      sections.scalarMultiplication = false;
+      sections.multiplication = false;
+    } else {
+      sections.linearTransformation = false;
+    }
+    window.SidebarSections.applySections(this.root, sections);
   }
 
   /**
@@ -1275,6 +1267,12 @@ class MatrixMode {
       this.themeUnsubscribe();
       this.themeUnsubscribe = null;
     }
+
+    if (this.viewport) {
+      this.viewport.destroy();
+      this.viewport = null;
+    }
+    this.coordSystem.setResizeCallback(null);
 
     // Destroy all dropdowns
     if (this.dropdowns) {

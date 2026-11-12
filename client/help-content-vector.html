@@ -25,8 +25,13 @@
 <section id="controls">
   <h2 class="heading-small">Controls</h2>
   <ul>
-    <li>Click and drag on the grid to create a vector.</li>
-    <li>Use the buttons in the left sidebar to perform mathematical operations on your vectors.</li>
+    <li>Click and drag on the grid to create a vector. You can create up to 12 vectors (v₁ to v₁₂).</li>
+    <li>Or press + next to the vector count and type the coordinates, then press Enter or ✓. Press Escape to cancel.</li>
+    <li>To change a vector, drag its tip, or type new numbers into its fields in the sidebar. The grid updates as you type; press Escape to undo your edit. Press × to remove a vector.</li>
+    <li>In Cartesian mode, the fields are x and y. In Polar mode, they are the length r and the angle θ in degrees, measured counterclockwise from the positive x-axis.</li>
+    <li>Scroll (or pinch on a trackpad) to zoom in and out around the mouse pointer.</li>
+    <li>Hold Space and drag, or drag with the right mouse button, to move around the plane. Press "Reset view" at the bottom of the grid to return to the starting view.</li>
+    <li>For each operation, choose which vectors to use from the dropdowns, then press its button.</li>
     <li>Watch the animated result appear on the grid and see the mathematical formulas in the Results section.</li>
   </ul>
 </section>
@@ -36,28 +41,34 @@
   <h2 class="heading-small">Key Features</h2>
 
   <h3 class="heading-xxxsmall">Vector Addition</h3>
-  <p>Add two vectors together to see the resulting vector. The operation v₁ + v₂ is visualized with smooth animation showing how the vectors combine. The result follows the "tip-to-tail" method commonly taught in physics and mathematics.</p>
+  <p>Pick any two vectors and add them together to see the resulting vector. An operation such as v₁ + v₃ is visualized with smooth animation showing how the vectors combine. The result follows the "tip-to-tail" method commonly taught in physics and mathematics.</p>
 
   <h3 class="heading-xxxsmall">Vector Subtraction</h3>
-  <p>Subtract one vector from another (v₁ - v₂). This operation helps visualize the difference between vectors and is useful for understanding relative positions and directions.</p>
+  <p>Subtract one vector from another (for example v₁ - v₂). This operation helps visualize the difference between vectors and is useful for understanding relative positions and directions.</p>
 
   <h3 class="heading-xxxsmall">Scalar Multiplication</h3>
   <p>Multiply a vector by a scalar (number) to change its magnitude while preserving or reversing its direction. Enter any decimal value and see how it scales your vector. Negative scalars flip the vector's direction.</p>
 
   <h3 class="heading-xxxsmall">Dot Product</h3>
-  <p>Calculate the dot product (v₁ · v₂) between two vectors. This fundamental operation returns a scalar value and is essential for understanding projection, work, and angles between vectors. The formula and step-by-step calculation are displayed.</p>
+  <p>Calculate the dot product (for example v₁ · v₂) between any two vectors. This fundamental operation returns a scalar value and is essential for understanding projection, work, and angles between vectors. The formula and step-by-step calculation are displayed.</p>
 
   <h3 class="heading-xxxsmall">Vector Projection</h3>
-  <p>Project vector v₁ onto vector v₂ to find the component of v₁ that lies along v₂. This operation is crucial for decomposing vectors into components and understanding how much of one vector "goes in the direction" of another. The result shows proj_v₂(v₁) as a vector along v₂.</p>
+  <p>Project one vector onto another, for example v₁ onto v₂, to find the component of v₁ that lies along v₂. This operation is crucial for decomposing vectors into components and understanding how much of one vector "goes in the direction" of another. The result shows proj_v₂(v₁) as a vector along v₂.</p>
 
   <h3 class="heading-xxxsmall">Angle Between Vectors</h3>
   <p>Calculate the angle between two vectors using the dot product formula. This operation shows the geometric relationship between vectors, displaying the result in both degrees and radians. Understanding this angle helps interpret the dot product geometrically.</p>
 
   <h3 class="heading-xxxsmall">Unit Vector / Normalization</h3>
-  <p>Convert any vector into a unit vector (length = 1.0) that points in the same direction. Normalization is fundamental in linear algebra for representing pure direction without magnitude. The result shows û₁ or û₂ with coordinates that maintain direction while achieving unit length.</p>
+  <p>Convert any vector into a unit vector (length = 1.0) that points in the same direction. Normalization is fundamental in linear algebra for representing pure direction without magnitude. The result is labelled with a hat (for example û₁ for v₁) and has coordinates that maintain direction while achieving unit length.</p>
 
   <h3 class="heading-xxxsmall">Perpendicular Vector</h3>
   <p>Generate a vector perpendicular (90° rotation) to an existing vector. This operation demonstrates the geometric relationship between vectors and is useful for understanding orthogonality, normal vectors, and rotations in 2D space.</p>
+
+  <h3 class="heading-xxxsmall">Reflection</h3>
+  <p>Mirror a vector across the X-axis, the Y-axis, or the diagonal line y = x. Choose the vector and the line of reflection from the dropdowns.</p>
+
+  <h3 class="heading-xxxsmall">Linear Combination</h3>
+  <p>Combine two vectors with scalar weights, a·vᵢ + b·vⱼ. Use the sliders to set the weights and the dropdowns to choose the vectors; the scaled vectors and the parallelogram that builds the result are drawn on the grid.</p>
 
   <h3 class="heading-xxxsmall">Real-time Calculations</h3>
   <p>As you create and modify vectors, the sidebar instantly displays their coordinates, magnitudes (lengths), and angles. All operations show both the mathematical formula and the numerical result.</p>
@@ -71,8 +82,8 @@
   <h2 class="heading-small">FAQ</h2>
 
   <details>
-    <summary>Why can I only create two vectors?</summary>
-    <p>This tool is designed to focus on binary operations (operations between two vectors) which are fundamental to learning linear algebra. Limiting to two vectors keeps the interface simple and helps you focus on understanding each operation deeply.</p>
+    <summary>How many vectors can I create?</summary>
+    <p>Up to 12. Each new vector takes the lowest free label, so if you remove v₂ the next vector you draw becomes v₂ again. Operations still work on one or two vectors at a time; use the dropdowns to choose which ones. You may also pick the same vector twice, for example v₁ + v₁ or v₁ · v₁.</p>
   </details>
 
   <details>

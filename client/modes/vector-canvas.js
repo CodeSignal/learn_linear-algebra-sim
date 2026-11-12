@@ -55,26 +55,18 @@ class VectorCanvas {
    * Check if mouse is near vector endpoint (for editing)
    * @param {number} mouseScreenX - Mouse X position in screen coordinates
    * @param {number} mouseScreenY - Mouse Y position in screen coordinates
-   * @param {Vector|null} vector1 - First vector or null
-   * @param {Vector|null} vector2 - Second vector or null
-   * @returns {string|null} 'vector1', 'vector2', or null
+   * @param {Array<Vector>} vectors - User vectors in draw order
+   * @returns {Vector|null} Topmost vector whose endpoint is under the mouse
    */
-  checkEndpointHit(mouseScreenX, mouseScreenY, vector1, vector2) {
-    const checkVector = (vector) => {
-      if (!vector) return false;
-      const endpoint = this.mathToScreen(vector.x, vector.y);
+  checkEndpointHit(mouseScreenX, mouseScreenY, vectors) {
+    // Iterate in reverse so the vector drawn on top wins
+    for (let i = vectors.length - 1; i >= 0; i--) {
+      const endpoint = this.mathToScreen(vectors[i].x, vectors[i].y);
       const dx = mouseScreenX - endpoint.x;
       const dy = mouseScreenY - endpoint.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      return distance <= this.styleConstants.hitRadius;
-    };
-
-    // Check vector1 first, then vector2
-    if (vector1 && checkVector(vector1)) {
-      return 'vector1';
-    }
-    if (vector2 && checkVector(vector2)) {
-      return 'vector2';
+      if (Math.sqrt(dx * dx + dy * dy) <= this.styleConstants.hitRadius) {
+        return vectors[i];
+      }
     }
     return null;
   }
@@ -86,12 +78,11 @@ class VectorCanvas {
   /**
    * Render the canvas with current vector state
    * @param {Object} state - Rendering state object
-   * @param {Vector|null} state.vector1 - First vector
-   * @param {Vector|null} state.vector2 - Second vector
+   * @param {Array<Vector>} state.vectors - User vectors
    * @param {Vector|null} state.resultVector - Result vector
    * @param {Vector|null} state.drawingVector - Vector being drawn
    * @param {boolean} state.isDrawing - Whether currently drawing
-   * @param {string|null} state.hoveredVector - 'vector1', 'vector2', or null
+   * @param {Vector|null} state.hoveredVector - Vector under the cursor
    * @param {Object|null} state.angleArcState - Angle arc visualization state
    * @param {Object|null} state.parallelogramState - Parallelogram animation state
    */
@@ -107,26 +98,16 @@ class VectorCanvas {
     this.coordSystem.drawAxes();
 
     // Draw vectors with hover state using CoordinateSystem
-    if (state.vector1) {
+    state.vectors.forEach(vector => {
       this.coordSystem.drawVector(
-        state.vector1,
+        vector,
         this.styleConstants,
         this.colors,
         false,
         1,
-        state.hoveredVector === 'vector1'
+        state.hoveredVector === vector
       );
-    }
-    if (state.vector2) {
-      this.coordSystem.drawVector(
-        state.vector2,
-        this.styleConstants,
-        this.colors,
-        false,
-        1,
-        state.hoveredVector === 'vector2'
-      );
-    }
+    });
 
     // Draw angle arc if angle visualization is active
     if (state.angleArcState) {
@@ -193,22 +174,20 @@ class VectorCanvas {
       const baseOpacity = this.styleConstants.parallelogram.opacity;
       const currentOpacity = baseOpacity * state.parallelogramState.edgeOpacity;
 
-      // Draw v2 translated to v1's tip (with progress for animation)
+      // Draw second operand translated to the first operand's tip
       this.coordSystem.drawTranslatedVector(
         v2,
         { x: v1.x, y: v1.y },
         this.styleConstants,
-        state.parallelogramState.v2Progress,
-        this.styleConstants.parallelogram.v2CopyColor
+        state.parallelogramState.v2Progress
       );
 
-      // Draw v1 translated to v2's tip (with progress for animation)
+      // Draw first operand translated to the second operand's tip
       this.coordSystem.drawTranslatedVector(
         v1,
         { x: v2.x, y: v2.y },
         this.styleConstants,
-        state.parallelogramState.v1Progress,
-        this.styleConstants.parallelogram.v1CopyColor
+        state.parallelogramState.v1Progress
       );
     }
 
@@ -248,8 +227,8 @@ class VectorCanvas {
     const origin = this.mathToScreen(0, 0);
 
     // Calculate arc radius (60 pixels or 20% of smaller vector, whichever is smaller)
-    const mag1 = vector1.magnitude() * this.styleConstants.gridSize;
-    const mag2 = vector2.magnitude() * this.styleConstants.gridSize;
+    const mag1 = vector1.magnitude() * this.coordSystem.getScale();
+    const mag2 = vector2.magnitude() * this.coordSystem.getScale();
     const maxRadius = 60;
     const minRadius = 30;
     const arcRadius = Math.min(maxRadius, Math.max(minRadius, Math.min(mag1, mag2) * 0.4));

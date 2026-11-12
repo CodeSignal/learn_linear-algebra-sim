@@ -7,29 +7,21 @@
   let configCache = null;
   let configPromise = null;
 
-  // Default configuration
+  // Default configuration. Sidebar sections default to shown; see SidebarSections.
   const DEFAULT_CONFIG = {
     defaultMode: 'vector',
     enabledModes: ['vector', 'matrix', 'tensor'],
     vectorMode: {
-      maxVectors: 2,
-      operationGroups: {
-        addition: true,
-        scalarMultiplication: true,
-        dotProduct: true,
-        projectionAngle: true,
-        normalization: true,
-        perpendicular: true,
-        reflection: true,
-        linearCombination: true
-      }
+      maxVectors: 12,
+      sections: {}
     },
     matrixMode: {
       maxMatrices: 2,
       includeVector: false,
-      operationGroups: {
-        determinant: true
-      }
+      sections: {}
+    },
+    tensorMode: {
+      sections: {}
     }
   };
 
@@ -93,18 +85,15 @@
           vectorMode: {
             ...DEFAULT_CONFIG.vectorMode,
             ...(userConfig.vectorMode || userConfig), // Backward compatible
-            operationGroups: {
-              ...DEFAULT_CONFIG.vectorMode.operationGroups,
-              ...(userConfig.vectorMode?.operationGroups || userConfig.operationGroups || {})
-            }
+            operationGroups: userConfig.vectorMode?.operationGroups || userConfig.operationGroups
           },
           matrixMode: {
             ...DEFAULT_CONFIG.matrixMode,
-            ...(userConfig.matrixMode || {}),
-            operationGroups: {
-              ...DEFAULT_CONFIG.matrixMode.operationGroups,
-              ...(userConfig.matrixMode?.operationGroups || {})
-            }
+            ...(userConfig.matrixMode || {})
+          },
+          tensorMode: {
+            ...DEFAULT_CONFIG.tensorMode,
+            ...(userConfig.tensorMode || {})
           }
         };
 

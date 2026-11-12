@@ -10,7 +10,13 @@
 // Runtime configuration comes from config.json via ConfigService
 
 const STYLE_CONSTANTS = {
-  gridSize: 40,           // pixels per unit
+  gridSize: 40,           // pixels per unit at the default zoom
+  viewport: {
+    minScale: 10,         // pixels per unit, fully zoomed out
+    maxScale: 200,        // pixels per unit, fully zoomed in
+    wheelZoomSpeed: 0.0015,  // zoom per wheel delta pixel (mouse wheel / two-finger scroll)
+    pinchZoomSpeed: 0.01     // zoom per wheel delta pixel while pinching (ctrlKey wheel events)
+  },
   arrowHeadSize: 12,      // pixels
   vectorLineWidth: 3,
   gridLineWidth: 1,
@@ -18,20 +24,31 @@ const STYLE_CONSTANTS = {
   hitRadius: 15,          // pixels for endpoint hit detection
   colors: {
     // Domain-specific colors (intentional exceptions, not in design system)
-    vector1: '#ef4444',   // red
-    vector2: '#3b82f6',   // blue
+    // One color per vector slot (v₁…v₁₂); avoids the green result and purple angle-arc hues
+    vectorPalette: [
+      '#ef4444', // red
+      '#3b82f6', // blue
+      '#f59e0b', // amber
+      '#8b5cf6', // violet
+      '#ec4899', // pink
+      '#06b6d4', // cyan
+      '#f97316', // orange
+      '#6366f1', // indigo
+      '#a16207', // brown
+      '#64748b', // slate
+      '#d946ef', // fuchsia
+      '#9f1239'  // crimson
+    ],
     result: '#10b981',    // green
-    matrixBasisI: '#ef4444',  // red for î_A (same as vector1)
-    matrixBasisJ: '#3b82f6',  // blue for ĵ_A (same as vector2)
+    matrixBasisI: '#ef4444',  // red for î_A
+    matrixBasisJ: '#3b82f6',  // blue for ĵ_A
     matrixBasisIB: '#f59e0b',  // orange for î_B
     matrixBasisJB: '#a855f7',  // purple for ĵ_B
     // Generic colors (grid, axis, text, hover, hoverHighlight) now come from design system CSS variables
   },
   animationDuration: 800, // milliseconds
   parallelogram: {
-    // Light tinted colors matching source vectors
-    v1CopyColor: '#f8b4b4',     // Light red (40% lighter than v1)
-    v2CopyColor: '#93c5fd',     // Light blue (40% lighter than v2)
+    // Translated copies are drawn in their source vector's color
     // Line styling
     lineWidth: 2,               // Thinner than main vectors (3px)
     dashPattern: [8, 4],        // Longer dash than result vector [5,5]
@@ -61,11 +78,14 @@ async function loadConfig() {
       defaultMode: 'vector',
       enabledModes: ['vector', 'matrix', 'tensor'],
       vectorMode: {
-        maxVectors: 2,
-        operationGroups: {}
+        maxVectors: 12,
+        sections: {}
       },
       matrixMode: {
-        operationGroups: {}
+        sections: {}
+      },
+      tensorMode: {
+        sections: {}
       }
     };
   }
@@ -73,28 +93,18 @@ async function loadConfig() {
   // ConfigService.loadConfig() already merges with DEFAULT_CONFIG
   const rawConfig = await window.ConfigService.loadConfig();
 
-  // Validate and normalize operation groups using schemas, creating a new object
-  let validatedConfig = { ...rawConfig };
+  // Resolve every mode's sidebar sections (including legacy operationGroups)
+  // into a complete { key: boolean } map, creating a new object
+  const validatedConfig = { ...rawConfig };
 
-  if (window.OperationSchemas) {
-    if (rawConfig.vectorMode) {
-      validatedConfig.vectorMode = {
-        ...rawConfig.vectorMode,
-        operationGroups: window.OperationSchemas.validateOperationGroups(
-          'vector',
-          rawConfig.vectorMode.operationGroups || {}
-        )
-      };
-    }
-    if (rawConfig.matrixMode) {
-      validatedConfig.matrixMode = {
-        ...rawConfig.matrixMode,
-        operationGroups: window.OperationSchemas.validateOperationGroups(
-          'matrix',
-          rawConfig.matrixMode.operationGroups || {}
-        )
-      };
-    }
+  if (window.SidebarSections) {
+    ['vector', 'matrix', 'tensor'].forEach(mode => {
+      const { operationGroups, ...modeConfig } = rawConfig[`${mode}Mode`] || {};
+      validatedConfig[`${mode}Mode`] = Object.freeze({
+        ...modeConfig,
+        sections: window.SidebarSections.resolveSections(mode, modeConfig.sections, operationGroups)
+      });
+    });
   }
 
   console.log(`Configuration loaded successfully. Default mode: ${validatedConfig.defaultMode}`);

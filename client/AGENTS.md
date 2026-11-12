@@ -14,9 +14,10 @@ before editing any asset under `client/`, then consult the sub-AGENTS inside
    `matrix-mode.css`, `tensor-mode.css`, plus any extra sheets appended after
    the Bespoke base.
 3. Script order matches `index.html`: `help-modal.js`, `logger.js`, core block
-   (`status.js`, `config.js`, `operation-schemas.js`, `help.js`,
+   (`status.js`, `config.js`, `sidebar-sections.js`, `help.js`,
    `mode-manager.js`, `color-utils.js`, `theme-service.js`, `results-panel.js`,
-   `format-utils.js`, `vector.js`, `animator.js`, `coordinate-system.js`),
+   `format-utils.js`, `vector.js`, `animator.js`, `coordinate-system.js`,
+   `viewport-controller.js`),
    `app.js`, entities (`entities/matrix.js`), mode scripts
    (`client/modes/*`), then `linear-algebra.js` last. New shared utilities go
    in the core block; new modes sit with the mode scripts.
@@ -71,9 +72,13 @@ before editing any asset under `client/`, then consult the sub-AGENTS inside
   strings listed in the root AGENTS are allowed.
 - Config data flows: `ConfigService.loadConfig()` fetches `config.json`, merges
   defaults, and caches. `linear-algebra.js` freezes the resulting object; never
-  mutate it downstream. Validate `operationGroups` with
-  `OperationSchemas.validateOperationGroups(mode, groups)` before enabling
-  UI elements.
+  mutate it downstream. It resolves `<mode>Mode.sections` (plus legacy
+  `operationGroups`) for vector, matrix and tensor via
+  `SidebarSections.resolveSections(mode, sections, operationGroups)` before any
+  mode is created.
+- Every configurable sidebar block carries `data-section="<key>"`; wrappers
+  that should disappear once empty carry `data-section-container`. New sidebar
+  sections must add their key to `SIDEBAR_SECTIONS` and to `config.json`.
 - Log every user-triggered operation (`VectorOperations`, `MatrixMode`
   transforms, config changes) via `logAction`.
 - LocalStorage, fetch, and WebSocket code must be wrapped in try/catch with

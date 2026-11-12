@@ -12,8 +12,12 @@ class TensorMode {
     this.coordSystem = coordSystem;
     this.root = rootElement;
 
+    // Sidebar sections from config.json (tensorMode.sections)
+    this.sections = appConfig.tensorMode?.sections || {};
+    this.availableRanks = this.resolveAvailableRanks();
+
     // State
-    this.rank = 0; // Default to scalar (rank 0)
+    this.rank = this.availableRanks[0];
     this.tensorData = {
       scalar: 1.0,
       vector: { x: 2, y: 1 },
@@ -80,25 +84,42 @@ class TensorMode {
     }
   }
 
+  /**
+   * Ranks the config leaves visible (sections rank0..rank3); all ranks when none are
+   * @returns {number[]} Sorted ranks
+   */
+  resolveAvailableRanks() {
+    const ranks = [0, 1, 2, 3].filter(rank => this.sections[`rank${rank}`] !== false);
+    if (ranks.length === 0) {
+      console.warn('config.json: tensorMode.sections hides every rank; showing all ranks instead');
+      return [0, 1, 2, 3];
+    }
+    return ranks;
+  }
+
   setupUI() {
+    const rankLabels = ['0 (Scalar)', '1 (Vector)', '2 (Matrix)', '3 (3D Tensor)'];
+    const rankButtons = this.availableRanks.map(rank => {
+      const active = rank === this.rank ? ' active' : '';
+      return `<button class="button button-tertiary rank-btn${active}" data-rank="${rank}">${rankLabels[rank]}</button>`;
+    }).join('');
+
+    // A single rank needs no selector
+    const rankSelector = this.availableRanks.length > 1 ? `
+          <div class="control-group">
+            <label>Tensor Rank</label>
+            <div class="rank-selector">${rankButtons}</div>
+          </div>` : '';
+
     // Create sidebar content
     this.root.innerHTML = `
       <div class="sidebar-section">
-        <div class="section-header">
+        <div class="section-header" data-section-container>
           <div></div>
-          <button id="tensor-reset" class="button button-secondary button-small">Reset</button>
+          <button id="tensor-reset" class="button button-secondary button-small" data-section="reset">Reset</button>
         </div>
 
-        <div class="tensor-controls">
-          <div class="control-group">
-            <label>Tensor Rank</label>
-            <div class="rank-selector">
-              <button class="button button-tertiary rank-btn active" data-rank="0">0 (Scalar)</button>
-              <button class="button button-tertiary rank-btn" data-rank="1">1 (Vector)</button>
-              <button class="button button-tertiary rank-btn" data-rank="2">2 (Matrix)</button>
-              <button class="button button-tertiary rank-btn" data-rank="3">3 (3D Tensor)</button>
-            </div>
-          </div>
+        <div class="tensor-controls">${rankSelector}
 
           <div id="tensor-input-container" class="tensor-input-container">
             <!-- Dynamic content based on rank -->
@@ -106,10 +127,14 @@ class TensorMode {
         </div>
       </div>
 
-      <div class="sidebar-section">
+      <div class="sidebar-section" data-section="controlsHint">
         <p class="hint body-xsmall">Drag to rotate, Scroll to zoom</p>
       </div>
     `;
+
+    if (window.SidebarSections) {
+      window.SidebarSections.applySections(this.root, this.sections);
+    }
 
     this.updateInputUI();
   }

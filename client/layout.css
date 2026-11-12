@@ -49,6 +49,11 @@ body.bespoke {
   padding-bottom: var(--UI-Spacing-spacing-s);
 }
 
+/* Keep Reset right-aligned when the control beside it is hidden by config */
+.section-header > [data-section="reset"] {
+  margin-left: auto;
+}
+
 .sidebar-section h2 {
   margin: 0;
   color: var(--Colors-Text-Body-Default);
@@ -244,6 +249,29 @@ body.bespoke {
 
 #grid-canvas.dragging {
   cursor: grabbing;
+}
+
+/* Pan cursors override per-mode inline hover cursors while a pan gesture is available */
+#grid-canvas.pan-ready {
+  cursor: grab !important;
+}
+
+#grid-canvas.panning {
+  cursor: grabbing !important;
+}
+
+.bespoke .view-reset {
+  position: absolute;
+  bottom: var(--UI-Spacing-spacing-ms);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--Colors-Backgrounds-Main-Default);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 50;
+}
+
+.bespoke .view-reset[hidden] {
+  display: none;
 }
 
 .instructions {

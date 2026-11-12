@@ -1,7 +1,16 @@
 /**
  * CoordinateSystem Class
  * Handles canvas setup, coordinate transformations, and grid/axes rendering
+ *
+ * The visible region is described by a view: { scale, offsetX, offsetY }, where
+ * scale is pixels per math unit and the offsets move the origin away from the
+ * canvas center (in pixels). Each mode activates its own named view.
  */
+
+// Candidate grid spacings (math units); the smallest one at least
+// MIN_GRID_SPACING_PX apart on screen is used for grid lines and tick labels
+const GRID_STEPS = [0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10, 20, 25, 50, 100];
+const MIN_GRID_SPACING_PX = 32;
 
 class CoordinateSystem {
   constructor(canvas, colors, styleConstants, skipAutoSetup = false) {
@@ -13,12 +22,93 @@ class CoordinateSystem {
     // Canvas dimensions (set by setupCanvas)
     this.width = 0;
     this.height = 0;
-    this.centerX = 0;
-    this.centerY = 0;
+
+    // Named views so each mode keeps its own pan/zoom
+    this.views = {};
+    this.view = this.createDefaultView();
 
     if (!skipAutoSetup) {
       this.setupCanvas();
     }
+  }
+
+  // Screen position of the math origin
+  get centerX() {
+    return this.width / 2 + this.view.offsetX;
+  }
+
+  get centerY() {
+    return this.height / 2 + this.view.offsetY;
+  }
+
+  // ============================================================================
+  // VIEW (PAN + ZOOM)
+  // ============================================================================
+
+  createDefaultView() {
+    return { scale: this.styleConstants.gridSize, offsetX: 0, offsetY: 0 };
+  }
+
+  /**
+   * Switch to the named view, creating it at the default position on first use
+   * @param {string} key - View name (e.g. the mode name)
+   */
+  activateView(key) {
+    if (!this.views[key]) {
+      this.views[key] = this.createDefaultView();
+    }
+    this.view = this.views[key];
+  }
+
+  /**
+   * Current zoom level
+   * @returns {number} Pixels per math unit
+   */
+  getScale() {
+    return this.view.scale;
+  }
+
+  isDefaultView() {
+    return this.view.scale === this.styleConstants.gridSize &&
+      this.view.offsetX === 0 &&
+      this.view.offsetY === 0;
+  }
+
+  resetView() {
+    Object.assign(this.view, this.createDefaultView());
+  }
+
+  /**
+   * Move the view by a screen-space delta
+   * @param {number} dx - Pixels to move right
+   * @param {number} dy - Pixels to move down
+   */
+  panBy(dx, dy) {
+    this.view.offsetX += dx;
+    this.view.offsetY += dy;
+  }
+
+  /**
+   * Zoom by a factor while keeping the math point under (screenX, screenY) fixed
+   * @param {number} screenX - Zoom anchor X in screen space
+   * @param {number} screenY - Zoom anchor Y in screen space
+   * @param {number} factor - Multiplier applied to the scale (> 1 zooms in)
+   */
+  zoomAt(screenX, screenY, factor) {
+    const { minScale, maxScale } = this.styleConstants.viewport;
+    const anchor = this.screenToMath(screenX, screenY);
+    this.view.scale = Math.min(maxScale, Math.max(minScale, this.view.scale * factor));
+    this.view.offsetX = screenX - anchor.x * this.view.scale - this.width / 2;
+    this.view.offsetY = screenY + anchor.y * this.view.scale - this.height / 2;
+  }
+
+  /**
+   * Grid spacing in math units for the current zoom
+   * @returns {number} Step between grid lines
+   */
+  getGridStep() {
+    const step = GRID_STEPS.find(s => s * this.view.scale >= MIN_GRID_SPACING_PX);
+    return step || GRID_STEPS[GRID_STEPS.length - 1];
   }
 
   setupCanvas() {
@@ -36,8 +126,6 @@ class CoordinateSystem {
 
       this.width = container.clientWidth;
       this.height = container.clientHeight;
-      this.centerX = this.width / 2;
-      this.centerY = this.height / 2;
 
       // Trigger external render callback if registered
       if (this.onResize) {
@@ -76,8 +164,8 @@ class CoordinateSystem {
    * @returns {object} - {x, y} in mathematical coordinates
    */
   screenToMath(screenX, screenY) {
-    const mathX = (screenX - this.centerX) / this.styleConstants.gridSize;
-    const mathY = -(screenY - this.centerY) / this.styleConstants.gridSize;
+    const mathX = (screenX - this.centerX) / this.view.scale;
+    const mathY = -(screenY - this.centerY) / this.view.scale;
     return { x: mathX, y: mathY };
   }
 
@@ -88,8 +176,8 @@ class CoordinateSystem {
    * @returns {object} - {x, y} in screen coordinates
    */
   mathToScreen(mathX, mathY) {
-    const screenX = this.centerX + mathX * this.styleConstants.gridSize;
-    const screenY = this.centerY - mathY * this.styleConstants.gridSize;
+    const screenX = this.centerX + mathX * this.view.scale;
+    const screenY = this.centerY - mathY * this.view.scale;
     return { x: screenX, y: screenY };
   }
 
@@ -120,81 +208,129 @@ class CoordinateSystem {
     this.ctx.strokeStyle = this.colors.grid;
     this.ctx.lineWidth = this.styleConstants.gridLineWidth;
 
+    const step = this.getGridStep();
+    const { xs, ys } = this.getVisibleTicks(step);
+
     // Vertical lines
-    for (let x = this.centerX % this.styleConstants.gridSize; x < this.width; x += this.styleConstants.gridSize) {
+    xs.forEach(value => {
+      const x = this.mathToScreen(value, 0).x;
       this.ctx.beginPath();
       this.ctx.moveTo(x, 0);
       this.ctx.lineTo(x, this.height);
       this.ctx.stroke();
-    }
+    });
 
     // Horizontal lines
-    for (let y = this.centerY % this.styleConstants.gridSize; y < this.height; y += this.styleConstants.gridSize) {
+    ys.forEach(value => {
+      const y = this.mathToScreen(0, value).y;
       this.ctx.beginPath();
       this.ctx.moveTo(0, y);
       this.ctx.lineTo(this.width, y);
       this.ctx.stroke();
-    }
+    });
   }
 
   /**
-   * Draw the X and Y axes with labels
+   * Multiples of `step` inside the visible area, per axis
+   * @param {number} step - Grid step in math units
+   * @returns {{xs: number[], ys: number[]}} Visible tick values
+   */
+  getVisibleTicks(step) {
+    const topLeft = this.screenToMath(0, 0);
+    const bottomRight = this.screenToMath(this.width, this.height);
+    const range = (min, max) => {
+      const values = [];
+      // Integer multipliers avoid floating-point drift (0.1 + 0.2 ...)
+      for (let k = Math.ceil(min / step); k <= Math.floor(max / step); k++) {
+        values.push(k * step);
+      }
+      return values;
+    };
+    return {
+      xs: range(topLeft.x, bottomRight.x),
+      ys: range(bottomRight.y, topLeft.y)
+    };
+  }
+
+  /**
+   * Format a tick value with just enough decimals for the step
+   * @param {number} value - Tick value
+   * @param {number} step - Grid step in math units
+   * @returns {string} Label text
+   */
+  formatTick(value, step) {
+    const decimals = step >= 1 ? 0 : String(step).split('.')[1].length;
+    return value.toFixed(decimals).replace(/^-(0(\.0+)?)$/, '$1');
+  }
+
+  /**
+   * Draw the X and Y axes with labels.
+   * When an axis is scrolled out of view its tick labels stick to the nearest edge.
    */
   drawAxes() {
-    this.ctx.strokeStyle = this.colors.axis;
-    this.ctx.lineWidth = this.styleConstants.axisLineWidth;
-    this.ctx.fillStyle = this.colors.text;
-    this.ctx.font = '12px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
+    const ctx = this.ctx;
+    ctx.strokeStyle = this.colors.axis;
+    ctx.lineWidth = this.styleConstants.axisLineWidth;
+    ctx.fillStyle = this.colors.text;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const originX = this.centerX;
+    const originY = this.centerY;
 
     // X-axis
-    this.ctx.beginPath();
-    this.ctx.moveTo(0, this.centerY);
-    this.ctx.lineTo(this.width, this.centerY);
-    this.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, originY);
+    ctx.lineTo(this.width, originY);
+    ctx.stroke();
 
     // Y-axis
-    this.ctx.beginPath();
-    this.ctx.moveTo(this.centerX, 0);
-    this.ctx.lineTo(this.centerX, this.height);
-    this.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(originX, 0);
+    ctx.lineTo(originX, this.height);
+    ctx.stroke();
 
-    // Draw tick marks and labels
-    const maxUnits = Math.ceil(Math.max(this.width, this.height) / this.styleConstants.gridSize / 2);
+    // Label rows/columns, clamped to stay on screen
+    const xLabelY = Math.min(Math.max(originY + 15, 12), this.height - 12);
+    const yLabelX = Math.min(Math.max(originX - 15, 15), this.width - 15);
 
-    for (let i = -maxUnits; i <= maxUnits; i++) {
-      if (i === 0) continue;
+    const step = this.getGridStep();
+    const { xs, ys } = this.getVisibleTicks(step);
 
-      const screenX = this.centerX + i * this.styleConstants.gridSize;
-      const screenY = this.centerY - i * this.styleConstants.gridSize;
-
-      // X-axis ticks
-      if (screenX >= 0 && screenX <= this.width) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(screenX, this.centerY - 5);
-        this.ctx.lineTo(screenX, this.centerY + 5);
-        this.ctx.stroke();
-        this.ctx.fillText(i.toString(), screenX, this.centerY + 15);
+    xs.forEach(value => {
+      if (value === 0) return;
+      const screenX = this.mathToScreen(value, 0).x;
+      ctx.beginPath();
+      ctx.moveTo(screenX, originY - 5);
+      ctx.lineTo(screenX, originY + 5);
+      ctx.stroke();
+      // Leave room for the 'x' axis letter at the right edge
+      if (screenX < this.width - 35) {
+        ctx.fillText(this.formatTick(value, step), screenX, xLabelY);
       }
+    });
 
-      // Y-axis ticks
-      if (screenY >= 0 && screenY <= this.height) {
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.centerX - 5, screenY);
-        this.ctx.lineTo(this.centerX + 5, screenY);
-        this.ctx.stroke();
-        this.ctx.fillText(i.toString(), this.centerX - 15, screenY);
+    ys.forEach(value => {
+      if (value === 0) return;
+      const screenY = this.mathToScreen(0, value).y;
+      ctx.beginPath();
+      ctx.moveTo(originX - 5, screenY);
+      ctx.lineTo(originX + 5, screenY);
+      ctx.stroke();
+      // Leave room for the 'y' axis letter at the top edge
+      if (screenY > 35) {
+        ctx.fillText(this.formatTick(value, step), yLabelX, screenY);
       }
-    }
+    });
 
     // Draw origin label
-    this.ctx.fillText('0', this.centerX - 15, this.centerY + 15);
+    ctx.fillText('0', originX - 15, originY + 15);
 
     // Draw axis labels
-    this.ctx.font = 'bold 14px Arial';
-    this.ctx.fillText('x', this.width - 20, this.centerY + 20);
-    this.ctx.fillText('y', this.centerX + 20, 20);
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('x', this.width - 20, Math.min(Math.max(originY + 20, 20), this.height - 20));
+    ctx.fillText('y', Math.min(Math.max(originX + 20, 20), this.width - 20), 20);
   }
 
   /**

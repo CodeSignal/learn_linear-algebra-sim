@@ -73,10 +73,11 @@ is pure HTML/CSS/JavaScript with no frameworks or bundlers.
 Scripts are ordered as in `client/index.html`:
 1. CSS: `bespoke.css`, `layout.css`, `vector-mode.css`, `matrix-mode.css`, `tensor-mode.css`
 2. JS: `help-modal.js`, `logger.js`, core block (`core/status.js`, `core/config.js`,
-   `core/operation-schemas.js`, `core/help.js`, `core/mode-manager.js`,
+   `core/sidebar-sections.js`, `core/help.js`, `core/mode-manager.js`,
    `core/color-utils.js`, `core/theme-service.js`, `core/results-panel.js`,
    `core/format-utils.js`, `core/vector.js`, `core/animator.js`,
-   `core/coordinate-system.js`), `app.js`, entities (`entities/matrix.js`),
+   `core/coordinate-system.js`, `core/viewport-controller.js`), `app.js`,
+   entities (`entities/matrix.js`),
    mode scripts (`modes/*`), then `linear-algebra.js` entrypoint.
 Add shared utilities to the core block; add new modes alongside the existing
 mode scripts.
@@ -140,11 +141,12 @@ client/
 ├── logger.js                # logAction helper -> POST /log
 ├── app.js                   # WebSocket & help bootstrap
 ├── linear-algebra.js        # Main app logic (registers modes, applies config)
-├── config.json              # Application configuration (default mode, enabled modes, operation groups)
+├── config.json              # Application configuration (default mode, enabled modes, sidebar sections)
 ├── core/                    # Shared services
 │   ├── mode-manager.js      # Mode switching system + dynamic buttons
 │   ├── theme-service.js     # Theme management
-│   ├── coordinate-system.js # Coordinate system
+│   ├── coordinate-system.js # Coordinate system (per-mode pan/zoom view)
+│   ├── viewport-controller.js # Pan + zoom input for 2D modes
 │   └── ...                  # Other core services
 ├── modes/                   # Mode controllers/renderers
 │   ├── vector-mode.js       # Vector mode controller

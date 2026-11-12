@@ -4,6 +4,14 @@
  * Uses modular components: VectorSidebar, VectorCanvas, VectorOperations
  */
 
+// Hard cap on user vectors regardless of config, to keep the canvas and sidebar usable
+const VECTOR_LIMIT = 12;
+
+const SUBSCRIPT_DIGITS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
+
+// Sidebar sections that need two vectors to be meaningful
+const TWO_VECTOR_SECTIONS = ['addition', 'dotProduct', 'projectionAngle', 'linearCombination'];
+
 class VectorMode {
   constructor(canvas, appConfig, styleConstants, coordSystem, rootElement) {
     this.canvas = canvas;
@@ -13,14 +21,26 @@ class VectorMode {
     this.coordSystem = coordSystem; // Accept shared CoordinateSystem
     this.root = rootElement; // Root element for sidebar (like MatrixMode)
 
+    const configuredMax = Number(appConfig.vectorMode?.maxVectors) || VECTOR_LIMIT;
+    this.maxVectors = Math.min(VECTOR_LIMIT, Math.max(1, configuredMax));
+
+    // Must run before VectorSidebar caches its elements
+    this.applySidebarSections();
+
     // Initialize modules
     this.sidebar = new VectorSidebar(this.root, this); // Pass parent mode for ResultsPanel integration
     this.canvasRenderer = new VectorCanvas(canvas, coordSystem, styleConstants, {});
     this.operations = new VectorOperations(appConfig, styleConstants);
 
-    // Vectors
-    this.vector1 = null;
-    this.vector2 = null;
+    // Pan (Space/right/middle drag) and zoom (wheel); left drag stays for drawing
+    this.viewport = new ViewportController(canvas, coordSystem, {
+      viewKey: 'vector',
+      resetButton: document.getElementById('reset-view'),
+      onChange: () => this.render()
+    });
+
+    // Vectors (sorted by id; id n is labelled vₙ)
+    this.vectors = [];
     this.resultVector = null;
 
     // Coordinate display mode
@@ -29,18 +49,19 @@ class VectorMode {
     // Interaction state
     this.isDrawing = false;
     this.isEditing = false;
-    this.editTarget = null; // 'vector1' or 'vector2'
+    this.editTarget = null; // Vector whose endpoint is being dragged
     this.drawingVector = null;
     this.startPos = { x: 0, y: 0 };
 
     // Hover state
-    this.hoveredVector = null; // 'vector1' or 'vector2' or null
+    this.hoveredVector = null; // Vector under the cursor or null
 
     // Animation state
     this.isAnimating = false;
     this.animationFrom = null;
     this.animationTo = null;
     this.animationControl = null; // Animator control object for cancellation
+    this.parallelogramFrame = null; // requestAnimationFrame id for parallelogram phase
 
     // Parallelogram animation state
     this.parallelogramState = null; // { startTime, v1Progress, v2Progress, edgeOpacity }
@@ -58,25 +79,12 @@ class VectorMode {
     // Load colors from CanvasThemeService
     this.loadColors();
 
-    // Update CoordinateSystem colors if provided
     if (this.coordSystem) {
-      const coordColors = {
-        grid: this.colors.grid,
-        axis: this.colors.axis,
-        text: this.colors.text,
-        hover: this.colors.hover,
-        hoverHighlight: this.colors.hoverHighlight
-      };
-      this.coordSystem.updateColors(coordColors);
-
       // Set up resize callback to trigger render
       this.coordSystem.setResizeCallback(() => {
         this.render();
       });
     }
-
-    // Update canvas renderer colors
-    this.canvasRenderer.updateColors(this.colors);
 
     // Subscribe to theme changes
     if (window.CanvasThemeService) {
@@ -91,6 +99,20 @@ class VectorMode {
     this.setupSidebarEventListeners();
     this.updateUI(); // Initial UI update
     this.render();
+  }
+
+  /**
+   * Remove sidebar sections hidden by config.json (vectorMode.sections), plus
+   * two-vector operations when only one vector is allowed
+   */
+  applySidebarSections() {
+    if (!window.SidebarSections) return;
+
+    const sections = { ...(this.appConfig.vectorMode?.sections || {}) };
+    if (this.maxVectors < 2) {
+      TWO_VECTOR_SECTIONS.forEach(key => { sections[key] = false; });
+    }
+    window.SidebarSections.applySections(this.root, sections);
   }
 
   /**
@@ -125,18 +147,20 @@ class VectorMode {
         this.coordinateMode = e.target.value;
         this.updateUI();
       },
+      onRemoveVector: (id) => this.removeVector(id),
+      onAddVector: (x, y) => this.addVectorFromInput(x, y),
+      onVectorInput: (id, x, y) => this.setVectorComponents(id, x, y),
+      onVectorCommit: (id) => this.logVectorEdit(id),
       onAdd: () => this.performAdd(),
       onSubtract: () => this.performSubtract(),
-      onScale: (vectorNum) => this.performScale(vectorNum),
+      onScale: () => this.performScale(),
       onDot: () => this.performDot(),
       onProject: () => this.performProject(),
       onAngle: () => this.performAngleBetween(),
-      onNormalize: (vectorNum) => this.performNormalize(vectorNum),
-      onPerpendicular: (vectorNum) => this.performPerpendicular(vectorNum),
-      onReflectV1: () => this.performReflect(1),
-      onReflectV2: () => this.performReflect(2),
-      onLinearCombo: () => this.performLinearCombination(),
-      onLinearComboInputChange: () => this.sidebar.updateLinearComboButton()
+      onNormalize: () => this.performNormalize(),
+      onPerpendicular: () => this.performPerpendicular(),
+      onReflect: () => this.performReflect(),
+      onLinearCombo: () => this.performLinearCombination()
     });
   }
 
@@ -144,11 +168,8 @@ class VectorMode {
     // Load theme-responsive colors from CanvasThemeService (guaranteed to be initialized before modes)
     const themeColors = window.CanvasThemeService.getColors();
 
-    // Store colors with vector-specific colors from styleConstants
     this.colors = {
       ...themeColors,
-      vector1: this.styleConstants.colors.vector1,
-      vector2: this.styleConstants.colors.vector2,
       result: this.styleConstants.colors.result
     };
 
@@ -171,6 +192,117 @@ class VectorMode {
   }
 
   // ============================================================================
+  // VECTOR COLLECTION
+  // ============================================================================
+
+  getVectorById(id) {
+    return this.vectors.find(v => v.id === id) || null;
+  }
+
+  /**
+   * Lowest unused vector id, so labels stay short and freed slots are reused
+   * @returns {number|null} Next id or null if the limit is reached
+   */
+  nextVectorId() {
+    if (this.vectors.length >= this.maxVectors) return null;
+    for (let id = 1; id <= this.maxVectors; id++) {
+      if (!this.getVectorById(id)) return id;
+    }
+    return null;
+  }
+
+  /**
+   * Create a zero-length vector for slot `id` with its palette color and label
+   * @param {number} id - Vector id (1-based)
+   * @returns {Vector} New vector
+   */
+  createVector(id) {
+    const palette = this.styleConstants.colors.vectorPalette;
+    const subscript = String(id).split('').map(d => SUBSCRIPT_DIGITS[Number(d)]).join('');
+    const vector = new Vector(0, 0, palette[(id - 1) % palette.length], `v${subscript}`);
+    vector.id = id;
+    vector.subscript = subscript;
+    vector.name = `v${id}`;
+    return vector;
+  }
+
+  /**
+   * Vector the next creation would produce (for the sidebar's draft row)
+   * @returns {Vector|null} Preview vector, or null at the limit
+   */
+  peekNextVector() {
+    const id = this.nextVectorId();
+    return id === null ? null : this.createVector(id);
+  }
+
+  /**
+   * Create a vector from coordinates typed in the sidebar
+   * @param {number} x
+   * @param {number} y
+   */
+  addVectorFromInput(x, y) {
+    const id = this.nextVectorId();
+    if (id === null || (x === 0 && y === 0)) return;
+
+    this.cancelAnimations();
+    const vector = this.createVector(id);
+    vector.x = x;
+    vector.y = y;
+    this.vectors = [...this.vectors, vector].sort((a, b) => a.id - b.id);
+
+    this.clearVisualizations();
+    this.updateUI();
+    this.render();
+    logAction(`Vector created from input: ${vector.name} at (${x.toFixed(2)}, ${y.toFixed(2)}), magnitude: ${vector.magnitude().toFixed(2)}, angle: ${vector.angleDegrees().toFixed(2)}°`);
+  }
+
+  /**
+   * Live update while the user types a vector's coordinates in the sidebar
+   * @param {number} id - Vector id
+   * @param {number} x
+   * @param {number} y
+   */
+  setVectorComponents(id, x, y) {
+    const vector = this.getVectorById(id);
+    if (!vector || (vector.x === x && vector.y === y)) return;
+
+    this.cancelAnimations();
+    vector.x = x;
+    vector.y = y;
+
+    // Results no longer match the edited vector
+    this.clearVisualizations();
+    this.updateUI();
+    this.render();
+  }
+
+  logVectorEdit(id) {
+    const vector = this.getVectorById(id);
+    if (!vector) return;
+    logAction(`Vector edited from input: ${vector.name} to (${vector.x.toFixed(2)}, ${vector.y.toFixed(2)}), magnitude: ${vector.magnitude().toFixed(2)}, angle: ${vector.angleDegrees().toFixed(2)}°`);
+  }
+
+  removeVector(id) {
+    const vector = this.getVectorById(id);
+    if (!vector) return;
+
+    this.cancelAnimations();
+    this.vectors = this.vectors.filter(v => v !== vector);
+    if (this.hoveredVector === vector) this.hoveredVector = null;
+    this.clearVisualizations();
+    this.sidebar.clearResults();
+    this.updateUI();
+    this.render();
+    logAction(`Vector removed: ${vector.name}`);
+  }
+
+  clearVisualizations() {
+    this.resultVector = null;
+    this.parallelogramState = null;
+    this.angleArcState = null;
+  }
+
+  // ============================================================================
   // COORDINATE TRANSFORMATIONS (delegated to canvas renderer)
   // ============================================================================
 
@@ -188,7 +320,7 @@ class VectorMode {
 
   // Check if mouse is near vector endpoint (for editing)
   checkEndpointHit(mouseScreenX, mouseScreenY) {
-    return this.canvasRenderer.checkEndpointHit(mouseScreenX, mouseScreenY, this.vector1, this.vector2);
+    return this.canvasRenderer.checkEndpointHit(mouseScreenX, mouseScreenY, this.vectors);
   }
 
   // ============================================================================
@@ -198,8 +330,7 @@ class VectorMode {
   render() {
     // Render canvas only - no UI updates during render
     this.canvasRenderer.render({
-      vector1: this.vector1,
-      vector2: this.vector2,
+      vectors: this.vectors,
       resultVector: this.resultVector,
       drawingVector: this.drawingVector,
       isDrawing: this.isDrawing,
@@ -217,14 +348,9 @@ class VectorMode {
    * Update UI elements (called only when state changes, not during render)
    */
   updateUI() {
-    // Update vector info display
-    this.sidebar.updateVectorInfo(this.vector1, this.vector2, this.coordinateMode);
-
-    // Update button states
-    this.sidebar.updateButtonStates(this.vector1, this.vector2);
-
-    // Update operation group visibility
-    this.sidebar.updateOperationGroupVisibility(this.appConfig);
+    this.sidebar.renderVectorList(this.vectors, this.coordinateMode, this.maxVectors, this.peekNextVector());
+    this.sidebar.updateVectorOptions(this.vectors);
+    this.sidebar.updateButtonStates(this.vectors.length);
   }
 
   // ============================================================================
@@ -256,21 +382,16 @@ class VectorMode {
       return;
     }
 
-    // Not editing - start drawing a new vector
+    const id = this.nextVectorId();
+    if (id === null) return;
+
+    // Start drawing a new vector
     this.startPos = {
       x: this.snapToGrid(mathPos.x),
       y: this.snapToGrid(mathPos.y)
     };
-
-    // Start drawing a new vector
-    if (!this.vector1) {
-      this.isDrawing = true;
-      this.drawingVector = new Vector(0, 0, this.styleConstants.colors.vector1, 'v₁');
-    } else if (!this.vector2 && this.appConfig.vectorMode.maxVectors >= 2) {
-      this.isDrawing = true;
-      this.drawingVector = new Vector(0, 0, this.styleConstants.colors.vector2, 'v₂');
-    }
-
+    this.isDrawing = true;
+    this.drawingVector = this.createVector(id);
     this.canvas.classList.add('dragging');
   }
 
@@ -280,22 +401,11 @@ class VectorMode {
     // Handle editing mode
     if (this.isEditing) {
       const mathPos = this.screenToMath(pos.x, pos.y);
-      const snappedX = this.snapToGrid(mathPos.x);
-      const snappedY = this.snapToGrid(mathPos.y);
+      this.editTarget.x = this.snapToGrid(mathPos.x);
+      this.editTarget.y = this.snapToGrid(mathPos.y);
 
-      // Update the vector being edited
-      if (this.editTarget === 'vector1' && this.vector1) {
-        this.vector1.x = snappedX;
-        this.vector1.y = snappedY;
-      } else if (this.editTarget === 'vector2' && this.vector2) {
-        this.vector2.x = snappedX;
-        this.vector2.y = snappedY;
-      }
-
-      // Clear result vector, parallelogram, and angle arc when editing
-      this.resultVector = null;
-      this.parallelogramState = null;
-      this.angleArcState = null;
+      // Results no longer match the edited vector
+      this.clearVisualizations();
       this.updateUI(); // Update UI when vector changes
       this.render();
       return;
@@ -326,16 +436,10 @@ class VectorMode {
   handleMouseUp(e) {
     // Handle editing mode
     if (this.isEditing) {
-      // Log vector editing
-      if (this.editTarget === 'vector1' && this.vector1) {
-        const mag = this.vector1.magnitude().toFixed(2);
-        const angle = this.vector1.angleDegrees().toFixed(2);
-        logAction(`Vector edited: v1 to (${this.vector1.x.toFixed(1)}, ${this.vector1.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
-      } else if (this.editTarget === 'vector2' && this.vector2) {
-        const mag = this.vector2.magnitude().toFixed(2);
-        const angle = this.vector2.angleDegrees().toFixed(2);
-        logAction(`Vector edited: v2 to (${this.vector2.x.toFixed(1)}, ${this.vector2.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
-      }
+      const vector = this.editTarget;
+      const mag = vector.magnitude().toFixed(2);
+      const angle = vector.angleDegrees().toFixed(2);
+      logAction(`Vector edited: ${vector.name} to (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
 
       this.isEditing = false;
       this.editTarget = null;
@@ -359,22 +463,15 @@ class VectorMode {
     this.canvas.classList.remove('dragging');
 
     // Only create vector if it has non-zero magnitude
-    if (this.drawingVector && (this.drawingVector.x !== 0 || this.drawingVector.y !== 0)) {
-      if (!this.vector1) {
-        this.vector1 = this.drawingVector;
-        // Log vector creation
-        const mag = this.vector1.magnitude().toFixed(2);
-        const angle = this.vector1.angleDegrees().toFixed(2);
-        logAction(`Vector created: v1 at (${this.vector1.x.toFixed(1)}, ${this.vector1.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
-      } else if (!this.vector2 && this.appConfig.vectorMode.maxVectors >= 2) {
-        // Only allow second vector if maxVectors is 2 or more
-        this.vector2 = this.drawingVector;
-        // Log vector creation
-        const mag = this.vector2.magnitude().toFixed(2);
-        const angle = this.vector2.angleDegrees().toFixed(2);
-        logAction(`Vector created: v2 at (${this.vector2.x.toFixed(1)}, ${this.vector2.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
-      }
-      this.resultVector = null; // Clear any previous result
+    const vector = this.drawingVector;
+    if (vector && (vector.x !== 0 || vector.y !== 0)) {
+      this.vectors = [...this.vectors, vector].sort((a, b) => a.id - b.id);
+
+      const mag = vector.magnitude().toFixed(2);
+      const angle = vector.angleDegrees().toFixed(2);
+      logAction(`Vector created: ${vector.name} at (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
+
+      this.clearVisualizations();
       this.updateUI(); // Update UI when vector is created
     }
 
@@ -396,12 +493,21 @@ class VectorMode {
   // VECTOR OPERATIONS (delegated to operations module)
   // ============================================================================
 
+  /**
+   * Resolve the vector selected in an operand dropdown
+   * @param {string} key - Operand key (see OPERAND_SELECTS in vector-sidebar.js)
+   * @returns {Vector|null} Selected vector
+   */
+  getOperand(key) {
+    const id = this.sidebar.getOperandId(key);
+    return id === null ? null : this.getVectorById(id);
+  }
+
   clearAll() {
-    this.vector1 = null;
-    this.vector2 = null;
-    this.resultVector = null;
-    this.parallelogramState = null;
-    this.angleArcState = null;
+    this.cancelAnimations();
+    this.vectors = [];
+    this.hoveredVector = null;
+    this.clearVisualizations();
     this.sidebar.clearResults(); // Clear results panel
     this.updateUI(); // Update UI after clearing
     this.render();
@@ -409,167 +515,123 @@ class VectorMode {
     logAction('Canvas cleared');
   }
 
-  performAdd() {
-    const opResult = this.operations.add(this.vector1, this.vector2);
+  /**
+   * Show a single-vector or scalar operation result
+   * @param {Object|null} opResult - Result from VectorOperations
+   */
+  showResult(opResult) {
     if (!opResult) return;
 
-    // Animate parallelogram construction
+    if (opResult.clearParallelogram) this.parallelogramState = null;
+    if (opResult.clearAngleArc) this.angleArcState = null;
+    if (opResult.angleArcState) this.angleArcState = opResult.angleArcState;
+
+    if (opResult.resultVector) {
+      this.animateToResult(opResult.resultVector, () => {
+        this.sidebar.displayResult(...opResult.resultLines);
+      });
+      return;
+    }
+
+    this.cancelAnimations();
+    this.resultVector = null;
+    this.render();
+    this.sidebar.displayResult(...opResult.resultLines);
+  }
+
+  /**
+   * Show a two-vector result with the parallelogram construction
+   * @param {Object|null} opResult - Result from VectorOperations with parallelogramVectors
+   */
+  showParallelogramResult(opResult) {
+    if (!opResult) return;
+
+    const { v1, v2, negatedV2, isLinearCombination } = opResult.parallelogramVectors;
+    this.angleArcState = null;
     this.animateParallelogram(
       opResult.resultVector,
-      opResult.parallelogramVectors.v1,
-      opResult.parallelogramVectors.v2,
-      opResult.parallelogramVectors.negatedV2,
+      v1,
+      v2,
+      negatedV2,
       () => {
         this.sidebar.displayResult(...opResult.resultLines);
-      }
+      },
+      isLinearCombination ? opResult.parallelogramVectors : null
     );
+  }
+
+  performAdd() {
+    this.showParallelogramResult(this.operations.add(this.getOperand('addA'), this.getOperand('addB')));
   }
 
   performSubtract() {
-    const opResult = this.operations.subtract(this.vector1, this.vector2);
-    if (!opResult) return;
-
-    // Animate parallelogram with v1 and -v2
-    this.animateParallelogram(
-      opResult.resultVector,
-      opResult.parallelogramVectors.v1,
-      opResult.parallelogramVectors.v2,
-      opResult.parallelogramVectors.negatedV2,
-      () => {
-        this.sidebar.displayResult(...opResult.resultLines);
-      }
-    );
+    this.showParallelogramResult(this.operations.subtract(this.getOperand('addA'), this.getOperand('addB')));
   }
 
-  performScale(vectorNum) {
+  performScale() {
     const scalar = this.sidebar.getScalarInput();
     if (isNaN(scalar)) return;
-
-    const vector = vectorNum === 1 ? this.vector1 : this.vector2;
-    const opResult = this.operations.scale(vector, scalar, vectorNum);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.clearAngleArc) this.angleArcState = null;
-
-    // Animate result
-    this.animateToResult(opResult.resultVector, () => {
-      this.sidebar.displayResult(...opResult.resultLines);
-    });
+    this.showResult(this.operations.scale(this.getOperand('scale'), scalar));
   }
 
   performDot() {
-    const opResult = this.operations.dot(this.vector1, this.vector2);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.clearAngleArc) this.angleArcState = null;
-
-    this.resultVector = null;
-    this.render();
-    this.sidebar.displayResult(...opResult.resultLines);
+    this.showResult(this.operations.dot(this.getOperand('dotA'), this.getOperand('dotB')));
   }
 
   performProject() {
-    const opResult = this.operations.project(this.vector1, this.vector2);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.clearAngleArc) this.angleArcState = null;
-
-    // Animate result
-    this.animateToResult(opResult.resultVector, () => {
-      this.sidebar.displayResult(...opResult.resultLines);
-    });
+    this.showResult(this.operations.project(this.getOperand('projectA'), this.getOperand('projectB')));
   }
 
   performAngleBetween() {
-    const opResult = this.operations.angleBetween(this.vector1, this.vector2);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.angleArcState) this.angleArcState = opResult.angleArcState;
-
-    this.resultVector = null;
-    this.render();
-    this.sidebar.displayResult(...opResult.resultLines);
+    this.showResult(this.operations.angleBetween(this.getOperand('projectA'), this.getOperand('projectB')));
   }
 
-  performNormalize(vectorNum) {
-    const vector = vectorNum === 1 ? this.vector1 : this.vector2;
-    const opResult = this.operations.normalize(vector, vectorNum);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.clearAngleArc) this.angleArcState = null;
-
-    // Animate result
-    this.animateToResult(opResult.resultVector, () => {
-      this.sidebar.displayResult(...opResult.resultLines);
-    });
+  performNormalize() {
+    this.showResult(this.operations.normalize(this.getOperand('normalize')));
   }
 
-  performPerpendicular(vectorNum) {
-    const vector = vectorNum === 1 ? this.vector1 : this.vector2;
-    const opResult = this.operations.perpendicular(vector, vectorNum);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.clearAngleArc) this.angleArcState = null;
-
-    // Animate result
-    this.animateToResult(opResult.resultVector, () => {
-      this.sidebar.displayResult(...opResult.resultLines);
-    });
+  performPerpendicular() {
+    this.showResult(this.operations.perpendicular(this.getOperand('perpendicular')));
   }
 
-  performReflect(vectorNum) {
-    const vector = vectorNum === 1 ? this.vector1 : this.vector2;
-    const reflectionType = this.sidebar.getReflectionType(vectorNum);
-    const opResult = this.operations.reflect(vector, vectorNum, reflectionType);
-    if (!opResult) return;
-
-    // Clear visualization states
-    if (opResult.clearParallelogram) this.parallelogramState = null;
-    if (opResult.clearAngleArc) this.angleArcState = null;
-
-    // Animate result
-    this.animateToResult(opResult.resultVector, () => {
-      this.sidebar.displayResult(...opResult.resultLines);
-    });
+  performReflect() {
+    const reflectionType = this.sidebar.getReflectionType();
+    this.showResult(this.operations.reflect(this.getOperand('reflect'), reflectionType));
   }
 
   performLinearCombination() {
     const { scalarA, scalarB } = this.sidebar.getLinearComboScalars();
     if (isNaN(scalarA) || isNaN(scalarB)) return;
 
-    const opResult = this.operations.linearCombination(this.vector1, this.vector2, scalarA, scalarB);
-    if (!opResult) return;
-
-    // Animate with parallelogram showing scaled vectors
-    this.animateParallelogram(
-      opResult.resultVector,
-      opResult.parallelogramVectors.v1,
-      opResult.parallelogramVectors.v2,
-      opResult.parallelogramVectors.negatedV2,
-      () => {
-        this.sidebar.displayResult(...opResult.resultLines);
-      },
-      opResult.parallelogramVectors
-    );
+    this.showParallelogramResult(this.operations.linearCombination(
+      this.getOperand('comboA'),
+      this.getOperand('comboB'),
+      scalarA,
+      scalarB
+    ));
   }
 
   // ============================================================================
   // ANIMATION
   // ============================================================================
 
+  /**
+   * Stop any running result or parallelogram animation
+   */
+  cancelAnimations() {
+    if (this.animationControl) {
+      this.animationControl.cancel();
+      this.animationControl = null;
+    }
+    if (this.parallelogramFrame !== null) {
+      cancelAnimationFrame(this.parallelogramFrame);
+      this.parallelogramFrame = null;
+    }
+    this.isAnimating = false;
+  }
+
   animateToResult(targetVector, onComplete) {
+    this.cancelAnimations();
     this.isAnimating = true;
     this.animationFrom = this.resultVector ? this.resultVector.clone() : new Vector(0, 0, targetVector.color, '');
     this.animationTo = targetVector;
@@ -585,6 +647,7 @@ class VectorMode {
       },
       onComplete: () => {
         this.isAnimating = false;
+        this.animationControl = null;
         this.resultVector = this.animationTo;
         this.render();
         if (onComplete) onComplete();
@@ -595,18 +658,21 @@ class VectorMode {
   /**
    * Animate parallelogram construction with staggered phases
    * Phase 1 (0-200ms): Fade in edges
-   * Phase 2 (0-400ms): Draw translated v2 from v1's tip
-   * Phase 3 (200-600ms): Draw translated v1 from v2's tip (overlaps phase 2)
+   * Phase 2 (0-400ms): Draw translated second operand from first operand's tip
+   * Phase 3 (200-600ms): Draw translated first operand from second operand's tip (overlaps phase 2)
    * Then triggers result vector animation
    *
    * @param {Vector} resultVector - The final result vector to animate after parallelogram
-   * @param {Vector} vector1 - First vector (usually v₁)
-   * @param {Vector} vector2 - Second vector (v₂ for addition, -v₂ for subtraction)
-   * @param {Vector} negatedVector2 - For subtraction: -v₂ to draw dashed; null for addition
+   * @param {Vector} vector1 - First operand
+   * @param {Vector} vector2 - Second operand (negated for subtraction)
+   * @param {Vector} negatedVector2 - For subtraction: negated operand to draw dashed; null otherwise
    * @param {Function} onComplete - Callback when all animations complete
    * @param {Object} linearComboData - Optional: {scaledV1, scaledV2, scalarA, scalarB} for linear combination visualization
    */
   animateParallelogram(resultVector, vector1, vector2, negatedVector2, onComplete, linearComboData = null) {
+    this.cancelAnimations();
+    this.isAnimating = true;
+
     this.parallelogramState = {
       startTime: performance.now(),
       v1Progress: 0,
@@ -622,39 +688,36 @@ class VectorMode {
       scalarB: linearComboData?.scalarB || null
     };
 
-    const totalDuration = this.styleConstants.parallelogram.staggerDelay + this.styleConstants.parallelogram.translateDuration;
+    const timing = this.styleConstants.parallelogram;
+    const totalDuration = timing.staggerDelay + timing.translateDuration;
 
     const animate = (currentTime) => {
-      const elapsed = currentTime - this.parallelogramState.startTime;
+      const state = this.parallelogramState;
+      if (!state) return;
 
-      // Phase 1: Fade in edges (0-200ms)
-      if (elapsed < this.styleConstants.parallelogram.edgeFadeInDuration) {
-        this.parallelogramState.edgeOpacity = elapsed / this.styleConstants.parallelogram.edgeFadeInDuration;
-      } else {
-        this.parallelogramState.edgeOpacity = 1;
-      }
+      const elapsed = currentTime - state.startTime;
 
-      // Phase 2: Draw translated v2 from v1's tip (0-400ms)
-      const v2Progress = Math.min(elapsed / this.styleConstants.parallelogram.translateDuration, 1);
-      // Use Animator easing function
-      this.parallelogramState.v2Progress = Animator.easeOutCubic(v2Progress);
+      // Phase 1: Fade in edges
+      state.edgeOpacity = Math.min(elapsed / timing.edgeFadeInDuration, 1);
 
-      // Phase 3: Draw translated v1 from v2's tip (200-600ms, overlaps phase 2)
-      const v1StartTime = this.styleConstants.parallelogram.staggerDelay;
-      const v1Elapsed = Math.max(0, elapsed - v1StartTime);
-      const v1Progress = Math.min(v1Elapsed / this.styleConstants.parallelogram.translateDuration, 1);
-      // Use Animator easing function
-      this.parallelogramState.v1Progress = Animator.easeOutCubic(v1Progress);
+      // Phase 2: Draw translated second operand from first operand's tip
+      const v2Progress = Math.min(elapsed / timing.translateDuration, 1);
+      state.v2Progress = Animator.easeOutCubic(v2Progress);
+
+      // Phase 3: Draw translated first operand from second operand's tip (overlaps phase 2)
+      const v1Elapsed = Math.max(0, elapsed - timing.staggerDelay);
+      const v1Progress = Math.min(v1Elapsed / timing.translateDuration, 1);
+      state.v1Progress = Animator.easeOutCubic(v1Progress);
 
       this.render(); // Only render canvas, no UI updates
 
       if (elapsed < totalDuration) {
-        requestAnimationFrame(animate);
+        this.parallelogramFrame = requestAnimationFrame(animate);
       } else {
-        // Parallelogram animation complete, now animate result vector
-        this.parallelogramState.v1Progress = 1;
-        this.parallelogramState.v2Progress = 1;
-        this.parallelogramState.edgeOpacity = 1;
+        this.parallelogramFrame = null;
+        state.v1Progress = 1;
+        state.v2Progress = 1;
+        state.edgeOpacity = 1;
         this.render();
 
         // Trigger result vector animation
@@ -662,7 +725,7 @@ class VectorMode {
       }
     };
 
-    requestAnimationFrame(animate);
+    this.parallelogramFrame = requestAnimationFrame(animate);
   }
 
   // ============================================================================
@@ -681,11 +744,7 @@ class VectorMode {
    * @returns {Array<Vector>} Array of current vectors
    */
   getVectors() {
-    const vectors = [];
-    if (this.vector1) vectors.push(this.vector1);
-    if (this.vector2) vectors.push(this.vector2);
-    if (this.resultVector) vectors.push(this.resultVector);
-    return vectors;
+    return this.resultVector ? [...this.vectors, this.resultVector] : [...this.vectors];
   }
 
   /**
@@ -708,6 +767,11 @@ class VectorMode {
       this.themeUnsubscribe = null;
     }
 
+    if (this.viewport) {
+      this.viewport.destroy();
+      this.viewport = null;
+    }
+
     // Clean up sidebar
     if (this.sidebar) {
       this.sidebar.destroy();
@@ -719,18 +783,11 @@ class VectorMode {
     }
 
     // Cancel any running animations
-    if (this.animationControl) {
-      this.animationControl.cancel();
-      this.animationControl = null;
-    }
+    this.cancelAnimations();
 
     // Clear state
-    this.vector1 = null;
-    this.vector2 = null;
-    this.resultVector = null;
-    this.parallelogramState = null;
-    this.angleArcState = null;
-    this.isAnimating = false;
+    this.vectors = [];
+    this.clearVisualizations();
     this.isDrawing = false;
     this.isEditing = false;
     this.editTarget = null;

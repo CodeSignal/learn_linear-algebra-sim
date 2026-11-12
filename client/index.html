@@ -48,119 +48,120 @@
     <aside class="sidebar">
       <!-- Vector Mode Content -->
       <div class="mode-content" data-mode="vector">
-        <div class="sidebar-section">
-          <div class="section-header">
-            <div id="coord-mode-dropdown"></div>
-            <button id="canvas-reset" class="button button-secondary button-small">Reset </button>
+        <div class="sidebar-section" data-section-container>
+          <div class="section-header" data-section-container>
+            <div id="coord-mode-dropdown" data-section="coordinateMode"></div>
+            <button id="canvas-reset" class="button button-secondary button-small" data-section="reset">Reset </button>
           </div>
-          <!-- Vector 1 -->
-          <div class="vector-control" id="vector1-control">
-            <h3 class="body-medium">Vector 1 <span class="vector-label v1-color">v₁</span></h3>
-            <div class="vector-info">
-              <div class="info-row body-xsmall">
-                <span class="label">Coordinates:</span>
-                <span id="v1-coords" class="value">Not created</span>
-              </div>
-              <div class="info-row body-xsmall">
-                <span class="label">Magnitude:</span>
-                <span id="v1-magnitude" class="value">—</span>
+          <div class="vector-list-section" data-section="vectorList">
+            <div class="vector-list-header">
+              <h2 class="heading-small">Vectors</h2>
+              <div class="vector-list-actions">
+                <span id="vector-count" class="body-xsmall vector-count">0 / 12</span>
+                <button id="vector-add" type="button" class="button button-secondary button-xsmall vector-add"
+                  aria-label="Add vector by coordinates" title="Add vector by coordinates">+</button>
               </div>
             </div>
-            <!-- Reflection Control -->
-            <div class="reflection-control" data-operation-group="reflection">
-              <div id="reflect-type-v1-dropdown"></div>
-              <button id="op-reflect-v1" class="button button-primary btn-full-width" disabled>Reflect</button>
-            </div>
-          </div>
-
-          <!-- Vector 2 -->
-          <div class="vector-control" id="vector2-control">
-            <h3 class="body-medium">Vector 2 <span class="vector-label v2-color">v₂</span></h3>
-            <div class="vector-info">
-              <div class="info-row body-xsmall">
-                <span class="label">Coordinates:</span>
-                <span id="v2-coords" class="value">Not created</span>
-              </div>
-              <div class="info-row body-xsmall">
-                <span class="label">Magnitude:</span>
-                <span id="v2-magnitude" class="value">—</span>
-              </div>
-            </div>
-            <!-- Reflection Control -->
-            <div class="reflection-control" data-operation-group="reflection">
-              <div id="reflect-type-v2-dropdown"></div>
-              <button id="op-reflect-v2" class="button button-primary btn-full-width" disabled>Reflect</button>
-            </div>
+            <div id="vector-list" class="vector-list"></div>
           </div>
         </div>
 
         <!-- Operations Section -->
-        <div class="sidebar-section">
+        <div class="sidebar-section" data-section-container>
           <h2 class="heading-small">Operations</h2>
 
-          <div class="operation-group" data-operation-group="addition">
+          <div class="operation-group" data-section="addition">
             <div class="operation-label">
               <span>Addition & Subtraction</span>
             </div>
-            <button id="op-add" class="button button-primary" disabled>Add v₁ + v₂</button>
-            <button id="op-subtract" class="button button-primary" disabled>Subtract v₁ - v₂</button>
+            <div class="operand-row">
+              <div class="operand-select"><div id="add-vector-a-dropdown"></div></div>
+              <span class="operand-symbol body-large">±</span>
+              <div class="operand-select"><div id="add-vector-b-dropdown"></div></div>
+            </div>
+            <button id="op-add" class="button button-primary" disabled>Add</button>
+            <button id="op-subtract" class="button button-primary" disabled>Subtract</button>
           </div>
 
-          <div class="operation-group" data-operation-group="scalarMultiplication">
+          <div class="operation-group" data-section="scalarMultiplication">
             <div class="operation-label">
               <span>Scalar Multiplication</span>
             </div>
-            <div class="scalar-control">
-              <input type="number" id="scalar-input" class="input" value="2" step="0.1" />
-              <span class="times-symbol body-large">×</span>
-              <div id="scale-vector-dropdown"></div>
-              <button id="op-scale" class="button button-primary btn-full-width" disabled>Scale</button>
+            <div class="operand-row">
+              <input type="number" id="scalar-input" class="input scalar-input" value="2" step="0.1" />
+              <span class="operand-symbol body-large">×</span>
+              <div class="operand-select"><div id="scale-vector-dropdown"></div></div>
             </div>
+            <button id="op-scale" class="button button-primary" disabled>Scale</button>
           </div>
 
-          <div class="operation-group" data-operation-group="dotProduct">
+          <div class="operation-group" data-section="dotProduct">
             <div class="operation-label">
               <span>Dot Product</span>
             </div>
-            <button id="op-dot" class="button button-primary" disabled>v₁ · v₂</button>
+            <div class="operand-row">
+              <div class="operand-select"><div id="dot-vector-a-dropdown"></div></div>
+              <span class="operand-symbol body-large">·</span>
+              <div class="operand-select"><div id="dot-vector-b-dropdown"></div></div>
+            </div>
+            <button id="op-dot" class="button button-primary" disabled>Dot Product</button>
           </div>
 
-          <div class="operation-group" data-operation-group="projectionAngle">
+          <div class="operation-group" data-section="projectionAngle">
             <div class="operation-label">
               <span>Projection & Angle</span>
             </div>
-            <button id="op-project" class="button button-primary" disabled>Project v₁ onto v₂</button>
-            <button id="op-angle" class="button button-primary" disabled>Angle Between v₁ & v₂</button>
+            <div class="operand-row">
+              <div class="operand-select"><div id="project-vector-a-dropdown"></div></div>
+              <span class="operand-symbol body-small">onto</span>
+              <div class="operand-select"><div id="project-vector-b-dropdown"></div></div>
+            </div>
+            <button id="op-project" class="button button-primary" disabled>Project</button>
+            <button id="op-angle" class="button button-primary" disabled>Angle Between</button>
           </div>
 
-          <div class="operation-group" data-operation-group="normalization">
+          <div class="operation-group" data-section="normalization">
             <div class="operation-label">
               <span>Normalization</span>
             </div>
-            <div class="normalize-control">
-              <div id="normalize-vector-dropdown"></div>
-              <button id="op-normalize" class="button button-primary btn-full-width" disabled>Normalize</button>
-            </div>
+            <div class="operand-select"><div id="normalize-vector-dropdown"></div></div>
+            <button id="op-normalize" class="button button-primary" disabled>Normalize</button>
           </div>
 
-          <div class="operation-group" data-operation-group="perpendicular">
+          <div class="operation-group" data-section="perpendicular">
             <div class="operation-label">
               <span>Perpendicular Vector</span>
             </div>
-            <div class="perpendicular-control">
-              <div id="perpendicular-vector-dropdown"></div>
-              <button id="op-perpendicular" class="button button-primary btn-full-width" disabled>Show Perpendicular</button>
-            </div>
+            <div class="operand-select"><div id="perpendicular-vector-dropdown"></div></div>
+            <button id="op-perpendicular" class="button button-primary" disabled>Show Perpendicular</button>
           </div>
 
-          <div class="operation-group" data-operation-group="linearCombination">
+          <div class="operation-group" data-section="reflection">
+            <div class="operation-label">
+              <span>Reflection</span>
+            </div>
+            <div class="operand-row">
+              <div class="operand-select"><div id="reflect-vector-dropdown"></div></div>
+              <span class="operand-symbol body-small">across</span>
+              <div class="operand-select"><div id="reflect-type-dropdown"></div></div>
+            </div>
+            <button id="op-reflect" class="button button-primary" disabled>Reflect</button>
+          </div>
+
+          <div class="operation-group" data-section="linearCombination">
             <div class="operation-label">
               <span>Linear Combination</span>
             </div>
             <div class="linear-combo-control">
-              <div id="lc-scalar-a"></div>
-              <div id="lc-scalar-b"></div>
-              <button id="op-linear-combo" class="button button-primary" disabled>1v₁ + 1v₂</button>
+              <div class="linear-combo-term">
+                <div id="lc-scalar-a"></div>
+                <div class="operand-select"><div id="combo-vector-a-dropdown"></div></div>
+              </div>
+              <div class="linear-combo-term">
+                <div id="lc-scalar-b"></div>
+                <div class="operand-select"><div id="combo-vector-b-dropdown"></div></div>
+              </div>
+              <button id="op-linear-combo" class="button button-primary" disabled>Linear Combination</button>
             </div>
           </div>
         </div>
@@ -170,9 +171,9 @@
       <!-- Matrix Mode Content -->
       <div class="mode-content" data-mode="matrix">
         <div class="sidebar-section">
-          <div class="section-header">
+          <div class="section-header" data-section-container>
             <div></div>
-            <button id="matrix-reset" class="button button-secondary button-small">Reset</button>
+            <button id="matrix-reset" class="button button-secondary button-small" data-section="reset">Reset</button>
           </div>
 
           <!-- Matrix Input Grid -->
@@ -252,17 +253,17 @@
         </div>
 
         <!-- Operations Section -->
-        <div class="sidebar-section">
+        <div class="sidebar-section" data-section-container>
           <h2 class="heading-small">Operations</h2>
 
-          <div class="operation-group" data-operation-group="addition">
+          <div class="operation-group" data-section="addition">
             <div class="operation-label">
               <span>Addition</span>
             </div>
             <button id="op-matrix-add" class="button button-primary" disabled>Add A + B</button>
           </div>
 
-          <div class="operation-group" data-operation-group="scalarMultiplication">
+          <div class="operation-group" data-section="scalarMultiplication">
             <div class="operation-label">
               <span>Scalar Multiplication</span>
             </div>
@@ -274,21 +275,21 @@
             </div>
           </div>
 
-          <div class="operation-group" data-operation-group="multiplication">
+          <div class="operation-group" data-section="multiplication">
             <div class="operation-label">
               <span>Matrix Multiplication</span>
             </div>
             <button id="op-matrix-multiply" class="button button-primary" disabled>Multiply A @ B</button>
           </div>
 
-          <div class="operation-group" data-operation-group="linearTransformation">
+          <div class="operation-group" data-section="linearTransformation">
             <div class="operation-label">
               <span>Linear Transformation</span>
             </div>
             <button id="op-compute-ax" class="button button-primary" disabled>Compute Ax</button>
           </div>
 
-          <div class="operation-group" data-operation-group="determinant">
+          <div class="operation-group" data-section="determinant">
             <div class="operation-label">
               <span>Determinant</span>
             </div>
@@ -311,6 +312,7 @@
     <!-- Canvas: Cartesian Plane -->
     <div class="canvas-container">
       <canvas id="grid-canvas"></canvas>
+      <button id="reset-view" type="button" class="button button-secondary button-small view-reset" hidden>Reset view</button>
 
       <!-- Vector Mode Results Overlay -->
       <div id="vector-results"
@@ -358,7 +360,7 @@
   <!-- Core Infrastructure (must load before modes) -->
   <script src="./core/status.js"></script>
   <script src="./core/config.js"></script>
-  <script src="./core/operation-schemas.js"></script>
+  <script src="./core/sidebar-sections.js"></script>
   <script src="./core/help.js"></script>
   <script src="./core/mode-manager.js"></script>
   <script src="./core/color-utils.js"></script>
@@ -368,6 +370,7 @@
   <script src="./core/vector.js"></script>
   <script src="./core/animator.js"></script>
   <script src="./core/coordinate-system.js"></script>
+  <script src="./core/viewport-controller.js"></script>
   <script src="./app.js"></script>
 
   <!-- Mathematical Entities -->

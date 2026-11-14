@@ -264,6 +264,16 @@
   flex: 0 0 84px;
 }
 
+/* Coefficients run -9..9 with one decimal; the design system caps the box at 30px, too narrow for "-2.5" */
+.linear-combo-term .numeric-slider-input {
+  width: 46px;
+  min-width: 46px;
+  max-width: none;
+  padding-left: var(--UI-Spacing-spacing-xxs);
+  padding-right: var(--UI-Spacing-spacing-xxs);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Scalar inputs in operation rows: typed values, no spinners */
 .bespoke .operand-row > .scalar-input {
   -moz-appearance: textfield;
@@ -273,5 +283,6 @@
 .bespoke .operand-row > .scalar-input::-webkit-outer-spin-button,
 .bespoke .operand-row > .scalar-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
+  display: none; /* the design system gives spinners a 32px width that eats the text area */
   margin: 0;
 }

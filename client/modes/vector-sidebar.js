@@ -177,7 +177,35 @@ class VectorSidebar {
         showInputs: true,
         onChange: () => this.updateLinearComboButton()
       });
+      this.showDecimalsInSliderInput(this.sliders[key]);
     });
+  }
+
+  /**
+   * The design-system slider writes Math.round(value) into its number box on
+   * every change, so 2.5 shows as "3" and typing "2.5" is cut to "2" mid-typing.
+   * Show the value with one decimal instead, and leave the box alone while the
+   * user is typing in it.
+   * @param {NumericSlider} slider - Single-value slider with showInputs
+   */
+  showDecimalsInSliderInput(slider) {
+    const input = slider && slider.valueInput;
+    if (!input) return;
+    const baseUpdate = slider.updateVisuals.bind(slider);
+    slider.updateVisuals = () => {
+      // Run the original update without its input write, then write our own
+      const showInputs = slider.config.showInputs;
+      slider.config.showInputs = false;
+      try {
+        baseUpdate();
+      } finally {
+        slider.config.showInputs = showInputs;
+      }
+      if (document.activeElement !== input) {
+        input.value = String(Number(slider.values.toFixed(1)) || 0);
+      }
+    };
+    slider.updateVisuals();
   }
 
   /**

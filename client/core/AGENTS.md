@@ -43,7 +43,8 @@ across future Bespoke apps.
   - `onModeChange(callback)` notifies helpers like the HelpService when the
     active mode flips.
   - `registerMode(name, factory)` stores factories that must return instances
-    exposing `destroy()`.
+    exposing `destroy()`. Factories receive the snapshot from the instance's
+    last `getState()` (if it has one), or `undefined` on first activation.
   - `setMode(name)` tears down the current instance (wrapped in try/catch) and
     applies `.active`/`.hidden` classes. Never mutate the DOM for mode toggles
     elsewhere.
@@ -82,6 +83,10 @@ across future Bespoke apps.
   - Grid lines and tick labels cover only the visible area, with spacing from
     `getGridStep()`; tick labels pin to the canvas edge when an axis is
     off-screen.
+  - Vector labels avoid each other and every line drawn that frame: after
+    `clear()`, call `setLabelObstacles([{ vector, start? }])` with all lines
+    the frame will draw, then `drawVector` picks a free spot near the tip
+    (`placeLabel`), falling back to `computeLabelPosition`'s default.
 - `viewport-controller.js` (`class ViewportController`)\
   - Adds pan (middle/right drag, Space + left drag, or plain left drag with
     `panWithPrimaryButton`) and cursor-anchored wheel/pinch zoom to a 2D mode.

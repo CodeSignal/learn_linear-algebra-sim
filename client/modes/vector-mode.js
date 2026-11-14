@@ -13,7 +13,7 @@ const SUBSCRIPT_DIGITS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇'
 const TWO_VECTOR_SECTIONS = ['addition', 'dotProduct', 'projectionAngle', 'linearCombination'];
 
 class VectorMode {
-  constructor(canvas, appConfig, styleConstants, coordSystem, rootElement) {
+  constructor(canvas, appConfig, styleConstants, coordSystem, rootElement, savedState = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.appConfig = appConfig; // Runtime configuration from config.json
@@ -72,6 +72,9 @@ class VectorMode {
     // Angle arc visualization state
     this.angleArcState = null; // { vector1, vector2, angleRadians, angleDegrees }
 
+    // Projection drop-line state
+    this.projectionState = null; // { source } — vector whose projection is the result
+
     // Color cache for theme-responsive rendering
     this.colors = {};
 
@@ -102,6 +105,7 @@ class VectorMode {
     // Initialize
     this.setupCanvasEventListeners();
     this.setupSidebarEventListeners();
+    if (savedState) this.restoreState(savedState);
     this.updateUI(); // Initial UI update
     this.render();
   }
@@ -317,6 +321,7 @@ class VectorMode {
     this.resultVector = null;
     this.parallelogramState = null;
     this.angleArcState = null;
+    this.projectionState = null;
   }
 
   // ============================================================================
@@ -353,7 +358,8 @@ class VectorMode {
       isDrawing: this.isDrawing,
       hoveredVector: this.hoveredVector,
       angleArcState: this.angleArcState,
-      parallelogramState: this.parallelogramState
+      parallelogramState: this.parallelogramState,
+      projectionState: this.projectionState
     });
   }
 
@@ -569,9 +575,15 @@ class VectorMode {
     if (opResult.clearParallelogram) this.parallelogramState = null;
     if (opResult.clearAngleArc) this.angleArcState = null;
     if (opResult.angleArcState) this.angleArcState = opResult.angleArcState;
+    this.projectionState = null;
 
     if (opResult.resultVector) {
       this.animateToResult(opResult.resultVector, () => {
+        // Drop line appears once the projection has settled
+        if (opResult.projectionState) {
+          this.projectionState = opResult.projectionState;
+          this.render();
+        }
         this.displayResultLines(opResult);
       });
       return;
@@ -592,6 +604,7 @@ class VectorMode {
 
     const { v1, v2, negatedV2, isLinearCombination } = opResult.parallelogramVectors;
     this.angleArcState = null;
+    this.projectionState = null;
     this.animateParallelogram(
       opResult.resultVector,
       v1,
@@ -789,6 +802,38 @@ class VectorMode {
    */
   getVectors() {
     return this.resultVector ? [...this.vectors, this.resultVector] : [...this.vectors];
+  }
+
+  /**
+   * Snapshot kept by ModeManager while another mode is active
+   * @returns {{vectors: Array<{id: number, x: number, y: number}>, coordinateMode: string}}
+   */
+  getState() {
+    return {
+      vectors: this.vectors.map(v => ({ id: v.id, x: v.x, y: v.y })),
+      coordinateMode: this.coordinateMode
+    };
+  }
+
+  /**
+   * Rebuild vectors and the coordinate mode from a getState() snapshot
+   * @param {Object} state - Snapshot from getState()
+   */
+  restoreState(state) {
+    this.vectors = (state.vectors || [])
+      .filter(v => v.id >= 1 && v.id <= this.maxVectors)
+      .map(({ id, x, y }) => {
+        const vector = this.createVector(id);
+        vector.x = x;
+        vector.y = y;
+        return vector;
+      })
+      .sort((a, b) => a.id - b.id);
+
+    if (state.coordinateMode && state.coordinateMode !== this.coordinateMode) {
+      this.coordinateMode = state.coordinateMode;
+      if (this.sidebar.dropdowns.coordMode) this.sidebar.dropdowns.coordMode.setValue(state.coordinateMode);
+    }
   }
 
   /**

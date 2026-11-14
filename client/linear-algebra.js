@@ -160,7 +160,7 @@ async function initializeApp() {
   }
 
   // Register vector mode factory
-  window.ModeManager.registerMode('vector', () => {
+  window.ModeManager.registerMode('vector', (savedState) => {
     const canvas = document.getElementById('grid-canvas');
     const vectorContent = document.querySelector('.mode-content[data-mode="vector"]');
     if (!vectorContent) {
@@ -168,7 +168,7 @@ async function initializeApp() {
       return null;
     }
     const coordSystem = window.ModeManager.getCoordinateSystem();
-    return new VectorMode(canvas, appConfig, STYLE_CONSTANTS, coordSystem, vectorContent);
+    return new VectorMode(canvas, appConfig, STYLE_CONSTANTS, coordSystem, vectorContent, savedState);
   });
 
   // Register matrix mode factory

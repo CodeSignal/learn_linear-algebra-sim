@@ -201,6 +201,7 @@ class VectorOperations {
 
     return {
       resultVector: result,
+      projectionState: { source: vectorA },
       clearParallelogram: true,
       clearAngleArc: true,
       resultLines: [formula, calculation, resultText]

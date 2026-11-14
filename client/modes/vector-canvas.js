@@ -93,6 +93,27 @@ class VectorCanvas {
     // Use CoordinateSystem's clear method
     this.coordSystem.clear();
 
+    // Every line on the canvas, so labels can avoid them
+    const pState = state.parallelogramState;
+    const obstacles = state.vectors.map(vector => ({ vector }));
+    if (state.resultVector) obstacles.push({ vector: state.resultVector });
+    if (state.isDrawing && state.drawingVector) obstacles.push({ vector: state.drawingVector });
+    if (pState) {
+      [pState.negatedVector2, pState.scaledV1, pState.scaledV2].forEach(vector => {
+        if (vector) obstacles.push({ vector });
+      });
+      if (pState.useVector1 && pState.useVector2) {
+        obstacles.push({ vector: pState.useVector2, start: pState.useVector1 });
+        obstacles.push({ vector: pState.useVector1, start: pState.useVector2 });
+      }
+    }
+    if (state.projectionState && state.resultVector) {
+      const { source } = state.projectionState;
+      const tip = state.resultVector;
+      obstacles.push({ vector: { x: source.x - tip.x, y: source.y - tip.y }, start: tip });
+    }
+    this.coordSystem.setLabelObstacles(obstacles);
+
     // Use CoordinateSystem for grid and axes
     this.coordSystem.drawGrid();
     this.coordSystem.drawAxes();
@@ -191,6 +212,11 @@ class VectorCanvas {
       );
     }
 
+    // Projection: perpendicular drop from the projected vector's tip
+    if (state.projectionState && state.resultVector) {
+      this.drawProjectionDrop(state.projectionState.source, state.resultVector);
+    }
+
     // Draw result vector
     if (state.resultVector) {
       this.coordSystem.drawVector(
@@ -214,6 +240,50 @@ class VectorCanvas {
         false
       );
     }
+  }
+
+  /**
+   * Draw the dashed drop line from a vector's tip to its projection, with a
+   * right-angle mark where it meets the projection
+   * @param {Vector} source - Vector that was projected
+   * @param {Vector} projection - Projection result
+   */
+  drawProjectionDrop(source, projection) {
+    const from = this.coordSystem.mathToScreen(source.x, source.y);
+    const to = this.coordSystem.mathToScreen(projection.x, projection.y);
+    const dropLength = Math.hypot(from.x - to.x, from.y - to.y);
+    if (dropLength < 1) return; // source already lies on the line
+
+    const ctx = this.ctx;
+    const { parallelogram } = this.styleConstants;
+    ctx.save();
+    ctx.strokeStyle = source.color;
+    ctx.globalAlpha = parallelogram.opacity;
+    ctx.lineWidth = parallelogram.lineWidth;
+    ctx.setLineDash(parallelogram.dashPattern);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+
+    // Right-angle mark: unit vectors along the drop and back toward the origin
+    const origin = this.coordSystem.mathToScreen(0, 0);
+    const alongLength = Math.hypot(origin.x - to.x, origin.y - to.y);
+    if (alongLength >= 1) {
+      const size = Math.min(10, dropLength / 2, alongLength / 2);
+      const ux = (from.x - to.x) / dropLength;
+      const uy = (from.y - to.y) / dropLength;
+      const vx = (origin.x - to.x) / alongLength;
+      const vy = (origin.y - to.y) / alongLength;
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(to.x + ux * size, to.y + uy * size);
+      ctx.lineTo(to.x + (ux + vx) * size, to.y + (uy + vy) * size);
+      ctx.lineTo(to.x + vx * size, to.y + vy * size);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /**

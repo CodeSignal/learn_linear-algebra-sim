@@ -14,6 +14,7 @@
       this.currentMode = null;
       this.currentModeInstance = null;
       this.modes = {}; // Registry of mode factories
+      this.savedStates = {}; // Last getState() snapshot per mode, restored on return
       this.coordSystem = null; // Shared CoordinateSystem instance
       this.enabledModes = []; // Array of enabled mode names
       this.modeSwitcher = document.querySelector('.mode-switcher');
@@ -134,7 +135,9 @@
      * Register a mode factory
      * @param {string} name - Mode name ('vector' or 'matrix')
      * @param {Function} factory - Factory function that returns a mode instance
-     *                               The instance should have a destroy() method
+     *                               The instance should have a destroy() method.
+     *                               It receives the state saved from the mode's
+     *                               last getState() call (or undefined).
      */
     registerMode(name, factory) {
       this.modes[name] = factory;
@@ -172,6 +175,15 @@
         return;
       }
 
+      // Keep the outgoing mode's state so switching back restores it
+      if (this.currentModeInstance && typeof this.currentModeInstance.getState === 'function') {
+        try {
+          this.savedStates[this.currentMode] = this.currentModeInstance.getState();
+        } catch (error) {
+          console.error(`Error saving state of mode '${this.currentMode}':`, error);
+        }
+      }
+
       // Destroy current mode if exists
       if (this.currentModeInstance && typeof this.currentModeInstance.destroy === 'function') {
         try {
@@ -187,7 +199,7 @@
       // Instantiate new mode
       try {
         const factory = this.modes[modeName];
-        const modeInstance = factory();
+        const modeInstance = factory(this.savedStates[modeName]);
 
         if (!modeInstance) {
           throw new Error(`Mode factory returned null for '${modeName}'`);

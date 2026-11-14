@@ -104,6 +104,9 @@ class ResultsPanel {
       `<p class="formula">${line}</p>`
     ).join('');
 
+    // A new result should be visible without an extra click
+    this.expand();
+
     // Calculate optimal position after showing results
     if (this.canvasContainer && this.coordSystem && this.modeInstance) {
       this._debouncedReposition();
@@ -117,6 +120,13 @@ class ResultsPanel {
     if (!this.contentElement) return;
 
     this.contentElement.innerHTML = `<p class="hint">${this.emptyMessage}</p>`;
+  }
+
+  /**
+   * Expand the panel if it is collapsed
+   */
+  expand() {
+    if (this.isCollapsed) this.toggleCollapse();
   }
 
   /**

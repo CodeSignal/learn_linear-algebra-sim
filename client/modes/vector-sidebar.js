@@ -53,6 +53,7 @@ class VectorSidebar {
       opPerpendicular: this.root.querySelector('#op-perpendicular'),
       opReflect: this.root.querySelector('#op-reflect'),
       opLinearCombo: this.root.querySelector('#op-linear-combo'),
+      linearComboPreview: this.root.querySelector('#linear-combo-preview'),
 
       // Inputs
       scalarInput: this.root.querySelector('#scalar-input')
@@ -112,8 +113,7 @@ class VectorSidebar {
           { value: 'cartesian', label: 'Cartesian' },
           { value: 'polar', label: 'Polar' }
         ],
-        selectedValue: 'cartesian',
-        growToFit: true
+        selectedValue: 'cartesian'
       });
     }
 
@@ -292,7 +292,7 @@ class VectorSidebar {
     if (!this.emptyMessage) {
       this.emptyMessage = document.createElement('p');
       this.emptyMessage.className = 'vector-list-empty body-xsmall';
-      this.emptyMessage.textContent = 'Click and drag on the grid to draw a vector, or press + to type one in.';
+      this.emptyMessage.textContent = 'Click and drag on the grid to draw a vector, or press + Add to type one in.';
     }
     return this.emptyMessage;
   }
@@ -370,7 +370,7 @@ class VectorSidebar {
   updateVectorRow(row, coordinateMode, force = false) {
     const { vector } = row;
     row.label.textContent = vector.label;
-    row.label.style.color = vector.color;
+    row.label.style.setProperty('--vector-color', vector.color);
     row.remove.setAttribute('aria-label', `Remove ${vector.label}`);
 
     if (row.coordinateMode !== coordinateMode) {
@@ -522,7 +522,7 @@ class VectorSidebar {
   updateDraftRow(nextVector, coordinateMode) {
     const draft = this.draft;
     draft.label.textContent = nextVector.label;
-    draft.label.style.color = nextVector.color;
+    draft.label.style.setProperty('--vector-color', nextVector.color);
     draft.confirm.setAttribute('aria-label', `Add ${nextVector.label}`);
     draft.nextLabel = nextVector.label;
 
@@ -728,39 +728,25 @@ class VectorSidebar {
   }
 
   /**
-   * Update operation button text to reflect the selected operands
+   * Refresh text that depends on the selected operands. Operation buttons keep
+   * short fixed labels (the dropdowns already show the operands); only the
+   * linear combination shows a preview of the expression it will draw.
    */
   updateOperationLabels() {
-    const a = this.getOperandLabel('addA');
-    const b = this.getOperandLabel('addB');
-    const dotA = this.getOperandLabel('dotA');
-    const dotB = this.getOperandLabel('dotB');
-    const projA = this.getOperandLabel('projectA');
-    const projB = this.getOperandLabel('projectB');
-
-    const setText = (element, text) => {
-      if (element) element.textContent = text;
-    };
-
-    setText(this.elements.opAdd, a && b ? `Add ${a} + ${b}` : 'Add');
-    setText(this.elements.opSubtract, a && b ? `Subtract ${a} - ${b}` : 'Subtract');
-    setText(this.elements.opDot, dotA && dotB ? `${dotA} · ${dotB}` : 'Dot Product');
-    setText(this.elements.opProject, projA && projB ? `Project ${projA} onto ${projB}` : 'Project');
-    setText(this.elements.opAngle, projA && projB ? `Angle Between ${projA} & ${projB}` : 'Angle Between');
-
     this.updateLinearComboButton();
   }
 
   /**
-   * Update linear combination button text
+   * Update the linear combination preview (e.g. "2v₁ − v₂")
    */
   updateLinearComboButton() {
-    if (!this.elements.opLinearCombo) return;
+    const preview = this.elements.linearComboPreview;
+    if (!preview) return;
 
     const labelA = this.getOperandLabel('comboA');
     const labelB = this.getOperandLabel('comboB');
     if (!labelA || !labelB) {
-      this.elements.opLinearCombo.textContent = 'Linear Combination';
+      preview.textContent = '';
       return;
     }
 
@@ -770,13 +756,12 @@ class VectorSidebar {
     const roundedA = Math.round(scalarA * 10) / 10;
     const roundedB = Math.round(scalarB * 10) / 10;
 
-    // Format the button text with proper signs
-    const aText = roundedA === 1 ? '' : roundedA === -1 ? '-' : roundedA;
-    const bText = roundedB >= 0
-      ? ` + ${roundedB === 1 ? '' : roundedB}`
-      : ` - ${Math.abs(roundedB) === 1 ? '' : Math.abs(roundedB)}`;
+    // Format with proper signs; a coefficient of 1 is implied
+    const aText = roundedA === 1 ? '' : roundedA === -1 ? '−' : String(roundedA).replace('-', '−');
+    const bAbs = Math.abs(roundedB);
+    const bText = `${roundedB >= 0 ? ' + ' : ' − '}${bAbs === 1 ? '' : bAbs}`;
 
-    this.elements.opLinearCombo.textContent = `${aText}${labelA}${bText}${labelB}`;
+    preview.textContent = `${aText}${labelA}${bText}${labelB}`;
   }
 
   /**

@@ -98,25 +98,27 @@ class TensorMode {
   }
 
   setupUI() {
-    const rankLabels = ['0 (Scalar)', '1 (Vector)', '2 (Matrix)', '3 (3D Tensor)'];
+    const rankNames = ['Scalar', 'Vector', 'Matrix', '3D Tensor'];
     const rankButtons = this.availableRanks.map(rank => {
       const active = rank === this.rank ? ' active' : '';
-      return `<button class="button button-tertiary rank-btn${active}" data-rank="${rank}">${rankLabels[rank]}</button>`;
+      return `<button type="button" class="button button-tertiary rank-btn${active}" data-rank="${rank}" aria-pressed="${rank === this.rank}">` +
+        `<span class="rank-number">${rank}</span><span class="rank-name">${rankNames[rank]}</span></button>`;
     }).join('');
 
     // A single rank needs no selector
     const rankSelector = this.availableRanks.length > 1 ? `
           <div class="control-group">
-            <label>Tensor Rank</label>
-            <div class="rank-selector">${rankButtons}</div>
+            <h2 class="sidebar-title">Rank</h2>
+            <div class="rank-selector" style="--rank-count: ${this.availableRanks.length}">${rankButtons}</div>
           </div>` : '';
 
     // Create sidebar content
     this.root.innerHTML = `
       <div class="sidebar-section">
-        <div class="section-header" data-section-container>
-          <div></div>
-          <button id="tensor-reset" class="button button-secondary button-small" data-section="reset">Reset</button>
+        <div class="sidebar-toolbar" data-section-container>
+          <h2 class="sidebar-title">Tensor</h2>
+          <button id="tensor-reset" type="button" class="button button-tertiary button-xsmall toolbar-reset" data-section="reset"
+            title="Reset tensor values and view"><span aria-hidden="true">↺</span> Reset</button>
         </div>
 
         <div class="tensor-controls">${rankSelector}
@@ -128,7 +130,7 @@ class TensorMode {
       </div>
 
       <div class="sidebar-section" data-section="controlsHint">
-        <p class="hint body-xsmall">Drag to rotate, Scroll to zoom</p>
+        <p class="tensor-hint">Drag to rotate · Scroll to zoom</p>
       </div>
     `;
 
@@ -148,7 +150,7 @@ class TensorMode {
       case 0:
         html = `
           <div class="scalar-input-wrapper">
-            <label>Value</label>
+            <span class="tensor-input-label">Value</span>
             <input type="number" id="tensor-scalar-input" class="input matrix-input" value="${this.tensorData.scalar}" step="0.1">
           </div>
         `;
@@ -156,7 +158,7 @@ class TensorMode {
       case 1:
         html = `
           <div class="vector-input-wrapper">
-            <label>Components</label>
+            <span class="tensor-input-label">Components (x, y)</span>
             <div class="matrix-grid small">
               <div class="matrix-row">
                 <input type="number" id="tensor-vector-x" class="input matrix-input" value="${this.tensorData.vector.x}" step="0.1" placeholder="x">
@@ -169,7 +171,7 @@ class TensorMode {
       case 2:
         html = `
           <div class="matrix-input-wrapper">
-            <label>2x2 Matrix</label>
+            <span class="tensor-input-label">2 × 2 matrix</span>
             <div class="matrix-grid small">
               <div class="matrix-row">
                 <input type="number" id="tensor-m00" class="input matrix-input" value="${this.tensorData.matrix[0][0]}" step="0.1">
@@ -186,10 +188,10 @@ class TensorMode {
       case 3:
         html = `
           <div class="tensor3d-input-wrapper">
-            <label>2x2x2 Tensor (2 Slices)</label>
+            <span class="tensor-input-label">2 × 2 × 2 tensor</span>
             <div class="tensor-slices">
               <div class="slice">
-                <span class="body-xsmall">Slice 1 (Front, z=0)</span>
+                <span class="slice-label">Front slice (z = 0)</span>
                 <div class="matrix-grid small">
                   <div class="matrix-row">
                     <input type="number" id="tensor-t000" class="input matrix-input" value="${this.tensorData.tensor3d[0][0][0]}" step="0.1">
@@ -202,7 +204,7 @@ class TensorMode {
                 </div>
               </div>
               <div class="slice">
-                <span class="body-xsmall">Slice 2 (Back, z=1)</span>
+                <span class="slice-label">Back slice (z = 1)</span>
                 <div class="matrix-grid small">
                   <div class="matrix-row">
                     <input type="number" id="tensor-t100" class="input matrix-input" value="${this.tensorData.tensor3d[1][0][0]}" step="0.1">
@@ -231,15 +233,19 @@ class TensorMode {
     this.handleRankClick = (e) => {
       const rankBtns = this.root.querySelectorAll('.rank-btn');
       // Update active state
+      // The button holds spans, so resolve the button itself
+      const button = e.target.closest('.rank-btn');
+      if (!button) return;
       rankBtns.forEach(b => {
         b.classList.remove('active', 'button-primary');
         b.classList.add('button-tertiary');
+        b.setAttribute('aria-pressed', 'false');
       });
-      e.target.classList.add('active', 'button-primary');
-      e.target.classList.remove('button-tertiary');
+      button.classList.add('active');
+      button.setAttribute('aria-pressed', 'true');
 
       // Update rank
-      this.rank = parseInt(e.target.dataset.rank);
+      this.rank = parseInt(button.dataset.rank);
 
       // Log rank change
       try {

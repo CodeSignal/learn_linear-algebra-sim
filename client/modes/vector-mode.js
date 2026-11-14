@@ -36,6 +36,9 @@ class VectorMode {
     this.viewport = new ViewportController(canvas, coordSystem, {
       viewKey: 'vector',
       resetButton: document.getElementById('reset-view'),
+      controls: document.getElementById('view-controls'),
+      zoomInButton: document.getElementById('zoom-in'),
+      zoomOutButton: document.getElementById('zoom-out'),
       onChange: () => this.render()
     });
 
@@ -113,6 +116,7 @@ class VectorMode {
       TWO_VECTOR_SECTIONS.forEach(key => { sections[key] = false; });
     }
     window.SidebarSections.applySections(this.root, sections);
+    window.SidebarSections.openInitialGroups(this.root);
   }
 
   /**

@@ -20,7 +20,7 @@ const STYLE_CONSTANTS = {
   arrowHeadSize: 12,      // pixels
   vectorLineWidth: 3,
   gridLineWidth: 1,
-  axisLineWidth: 2,
+  axisLineWidth: 1.5,
   hitRadius: 15,          // pixels for endpoint hit detection
   colors: {
     // Domain-specific colors (intentional exceptions, not in design system)

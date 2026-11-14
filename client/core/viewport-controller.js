@@ -12,6 +12,7 @@
  */
 
 const ZOOM_LOG_DELAY_MS = 500;
+const BUTTON_ZOOM_FACTOR = 1.25; // zoom step for the + / − buttons
 
 class ViewportController {
   /**
@@ -22,6 +23,9 @@ class ViewportController {
    * @param {Function} options.onChange - Called (at most once per frame) after the view changes
    * @param {boolean} [options.panWithPrimaryButton=false] - Let plain left drag pan
    * @param {HTMLElement} [options.resetButton] - Button that restores the default view
+   * @param {HTMLElement} [options.controls] - Container shown while this controller is active
+   * @param {HTMLElement} [options.zoomInButton] - Button that zooms in around the canvas center
+   * @param {HTMLElement} [options.zoomOutButton] - Button that zooms out around the canvas center
    */
   constructor(canvas, coordSystem, options = {}) {
     this.canvas = canvas;
@@ -29,6 +33,9 @@ class ViewportController {
     this.onChange = options.onChange || null;
     this.panWithPrimaryButton = Boolean(options.panWithPrimaryButton);
     this.resetButton = options.resetButton || null;
+    this.controls = options.controls || null;
+    this.zoomInButton = options.zoomInButton || null;
+    this.zoomOutButton = options.zoomOutButton || null;
     this.speeds = coordSystem.styleConstants.viewport;
 
     this.isPanning = false;
@@ -44,6 +51,9 @@ class ViewportController {
     this.bindEvents();
     this.updateCursor();
     this.updateResetButton();
+    if (this.controls) {
+      this.controls.hidden = false;
+    }
   }
 
   bindEvents() {
@@ -72,6 +82,12 @@ class ViewportController {
 
     if (this.resetButton) {
       listen(this.resetButton, 'click', () => this.resetView());
+    }
+    if (this.zoomInButton) {
+      listen(this.zoomInButton, 'click', () => this.zoomByStep(BUTTON_ZOOM_FACTOR));
+    }
+    if (this.zoomOutButton) {
+      listen(this.zoomOutButton, 'click', () => this.zoomByStep(1 / BUTTON_ZOOM_FACTOR));
     }
   }
 
@@ -172,6 +188,16 @@ class ViewportController {
     }, ZOOM_LOG_DELAY_MS);
   }
 
+  /**
+   * Zoom around the canvas center (zoom buttons)
+   * @param {number} factor - Scale multiplier (>1 zooms in)
+   */
+  zoomByStep(factor) {
+    this.coordSystem.zoomAt(this.coordSystem.width / 2, this.coordSystem.height / 2, factor);
+    this.requestRender();
+    logAction(`View zoomed: ${this.coordSystem.getScale().toFixed(0)} px per unit`);
+  }
+
   // ============================================================================
   // VIEW STATE
   // ============================================================================
@@ -218,6 +244,9 @@ class ViewportController {
     this.canvas.classList.remove('pan-ready', 'panning');
     if (this.resetButton) {
       this.resetButton.hidden = true;
+    }
+    if (this.controls) {
+      this.controls.hidden = true;
     }
     this.onChange = null;
   }

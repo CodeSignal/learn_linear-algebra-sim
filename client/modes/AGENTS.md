@@ -105,7 +105,14 @@ Files: `vector-mode.js`, `vector-canvas.js`, `vector-sidebar.js`,
      the set of vector ids changes, keeps explicit user picks, and otherwise
      falls back to each select's `defaultSlot`.
    - The Design System `Dropdown` overwrites its container's `className`, so
-     layout classes (e.g. `.operand-select`) go on a wrapper element.
+     layout classes (e.g. `.operand-select`) go on a wrapper element. Sidebar
+     dropdowns do not use `growToFit` (it forces a 200px inline width).
+   - Operation buttons keep short fixed labels (Add, Subtract, Compute, …);
+     the operand dropdowns already show which vectors are used. Only the
+     linear combination shows a live preview (`#linear-combo-preview`).
+   - Each operation is a collapsible `<details class="operation-group">`
+     card (`summary.operation-label` + `.operation-body`); which cards start
+     open is set by `SidebarSections.openInitialGroups`.
    - `updateUI()` (inside `VectorMode`) should drive button enabling/disabling
      through methods on this class; keep logic centralized here.
 4. **VectorOperations**

@@ -7,12 +7,6 @@
   gap: var(--UI-Spacing-spacing-mxs);
 }
 
-.vector-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-
 .vector-list-actions {
   display: flex;
   align-items: center;
@@ -21,13 +15,14 @@
 
 .bespoke .vector-list-actions .vector-add {
   min-width: unset;
+  height: 28px;
   padding: 0 var(--UI-Spacing-spacing-s);
-  font-size: 1.1em;
 }
 
 .vector-count {
   color: var(--Colors-Text-Body-Light);
-  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--Fonts-Body-Default-xxs);
+  font-variant-numeric: tabular-nums;
 }
 
 .vector-list {
@@ -38,31 +33,47 @@
 
 .vector-list-empty {
   margin: 0;
+  padding: var(--UI-Spacing-spacing-mxs);
   color: var(--Colors-Text-Body-Light);
+  border: 1px dashed var(--la-border-strong);
+  border-radius: var(--UI-Radius-radius-s);
+  text-align: center;
 }
 
 .vector-row {
   display: flex;
   align-items: center;
   gap: var(--UI-Spacing-spacing-xs);
-  background: var(--Colors-Backgrounds-Main-Medium);
-  border-radius: var(--UI-Radius-radius-xs);
-  padding: var(--UI-Spacing-spacing-xxs) var(--UI-Spacing-spacing-s);
-  border: 1px solid var(--Colors-Stroke-Default);
+  background: var(--la-card-bg);
+  border-radius: var(--UI-Radius-radius-s);
+  padding: var(--UI-Spacing-spacing-xxs) var(--UI-Spacing-spacing-xxs) var(--UI-Spacing-spacing-xxs) var(--UI-Spacing-spacing-s);
+  border: 1px solid var(--la-border);
+  box-shadow: var(--la-shadow-soft);
 }
 
-/* Intentional exception: Times New Roman for math notation (vector labels like v₁) */
+/* Vector name with a dot in the vector's color (set inline as --vector-color) */
 .vector-label {
-  font-family: 'Times New Roman', serif;
-  font-style: italic;
-  font-weight: 700;
-  font-size: 1.1em;
-  min-width: 2.2em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 2.6em;
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--Colors-Text-Body-Strong);
+}
+
+.vector-label::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--vector-color, var(--Colors-Text-Body-Light));
   flex-shrink: 0;
 }
 
 .vector-row-draft {
   border-style: dashed;
+  box-shadow: none;
 }
 
 /* Coordinate fields: a compact Design System input box with an x/y/r/θ prefix */
@@ -70,7 +81,9 @@
   flex: 1 1 0;
   min-width: 0;
   width: auto;
-  height: var(--UI-Input-xs);
+  height: 28px;
+  border-radius: var(--UI-Radius-radius-xs);
+  background: transparent;
   padding: 0 var(--UI-Spacing-spacing-xs);
   gap: var(--UI-Spacing-spacing-xxs);
   font-size: inherit;
@@ -87,9 +100,7 @@
   border-color: var(--Colors-Alert-Error-Default);
 }
 
-/* Intentional exception: Times New Roman for math notation (x, y, r, θ) */
 .coord-prefix {
-  font-family: 'Times New Roman', serif;
   font-style: italic;
   color: var(--Colors-Text-Body-Light);
   flex-shrink: 0;
@@ -113,12 +124,13 @@
   outline: none;
   background: transparent;
   color: inherit;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: inherit;
   font-size: inherit;
+  font-variant-numeric: tabular-nums;
 }
 
 .vector-row-magnitude {
-  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
   color: var(--Colors-Text-Body-Light);
   white-space: nowrap;
   flex-shrink: 0;
@@ -132,8 +144,25 @@
 .bespoke .vector-row .vector-draft-confirm,
 .bespoke .vector-row .vector-draft-cancel {
   min-width: unset;
-  padding: 0 var(--UI-Spacing-spacing-s);
+  width: 28px;
+  height: 28px;
+  padding: 0;
   flex-shrink: 0;
+}
+
+.bespoke .vector-row .vector-remove,
+.bespoke .vector-row .vector-draft-cancel {
+  border-color: transparent;
+  background: transparent;
+  color: var(--Colors-Text-Body-Light);
+  font-size: 16px;
+}
+
+.bespoke .vector-row .vector-remove:hover,
+.bespoke .vector-row .vector-draft-cancel:hover {
+  border-color: transparent;
+  background: var(--Colors-Backgrounds-Main-Medium);
+  color: var(--Colors-Alert-Error-Default);
 }
 
 /* Operand selection */
@@ -150,12 +179,29 @@
 }
 
 .bespoke .operand-row > .scalar-input {
+  display: block;
+  height: var(--la-control-height);
+  padding: 0 var(--UI-Spacing-spacing-s);
+  font-size: var(--Fonts-Body-Default-xs);
   text-align: center;
+  flex: 0 0 72px;
 }
 
 .operand-symbol {
   color: var(--Colors-Text-Body-Light);
   flex-shrink: 0;
+  font-size: var(--Fonts-Body-Default-md);
+}
+
+.operand-symbol.operand-word {
+  font-size: var(--Fonts-Body-Default-xxs);
+}
+
+/* Operand dropdowns shrink to share the row (grow-to-fit would force 200px) */
+.bespoke .operand-select .dropdown-container,
+.bespoke .operand-select .dropdown-container.grow-to-fit {
+  width: 100%;
+  min-width: 0;
 }
 
 /* Operand dropdowns sit side by side, so the menu tracks the toggle width
@@ -168,6 +214,7 @@
 .bespoke .operand-select .dropdown-menu-item,
 .bespoke .operand-select .dropdown-menu-item.selected {
   width: 100%;
+  min-width: 0;
 }
 
 /* Shared with matrix mode's scalar multiplication row */
@@ -208,17 +255,23 @@
   gap: var(--UI-Spacing-spacing-s);
 }
 
-.linear-combo-term > #lc-scalar-a,
-.linear-combo-term > #lc-scalar-b {
+.linear-combo-term > .linear-combo-slider {
   flex: 1 1 auto;
   min-width: 0;
 }
 
 .linear-combo-term > .operand-select {
-  flex: 0 0 90px;
+  flex: 0 0 84px;
 }
 
-.linear-combo-control .button {
-  margin-top: var(--UI-Spacing-spacing-xxs);
-  min-width: unset;
+/* Scalar inputs in operation rows: typed values, no spinners */
+.bespoke .operand-row > .scalar-input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.bespoke .operand-row > .scalar-input::-webkit-outer-spin-button,
+.bespoke .operand-row > .scalar-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }

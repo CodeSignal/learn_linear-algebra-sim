@@ -280,7 +280,7 @@ class VectorCanvas {
     const labelX = origin.x + labelRadius * Math.cos(midAngle);
     const labelY = origin.y + labelRadius * Math.sin(midAngle);
 
-    this.ctx.font = 'bold 14px serif';
+    this.ctx.font = '600 13px "Work Sans", system-ui, sans-serif';
     this.ctx.fillStyle = 'rgb(147, 51, 234)';  // Darker purple for text
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';

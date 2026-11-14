@@ -97,6 +97,16 @@ before editing any asset under `client/`, then consult the sub-AGENTS inside
   `.card`, `.row`, `.toggle`, etc.). Follow spacing tokens from the Design
   System (`--UI-Spacing-*`); no magic numbers outside `linear-algebra.css`
   derivatives.
+- Sidebar UI patterns (styles in `layout.css`): `.sidebar-toolbar` (mode
+  settings + a small tertiary Reset), `.sidebar-section-header` with a
+  `.sidebar-title` label, and one `<details class="operation-group">` card per
+  operation with `.operand-row` / `.operation-actions` inside. Action buttons
+  are `button-secondary button-xsmall`; avoid full-width primary buttons.
+- App tokens live on `.bespoke` in `layout.css` (`--la-border`,
+  `--la-card-bg`, `--la-canvas-*`, …) with dark-mode values. Use them instead
+  of `--Colors-Stroke-Default`, which is a light color in dark mode.
+- `#view-controls` (zoom +/−, Reset view) sits top-right on the canvas and is
+  shown only while a 2D mode's `ViewportController` is alive.
 
 ## Logging + Diagnostics
 - Server logging is append-only; `logs/user_actions.log` lives outside this

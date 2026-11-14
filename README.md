@@ -58,8 +58,8 @@ Every sidebar section can be shown or hidden from `client/config.json`, so a pra
 - The older `operationGroups` booleans (e.g. `"dotProduct": false`) still work; `sections` takes precedence.
 
 ### User Interface
-- **Left Sidebar**: Control panel with mode-specific information and operation buttons
-- **Main Canvas**: Full-screen coordinate plane (2D for vector/matrix modes, 3D for tensor mode)
+- **Left Sidebar**: Control panel with mode-specific inputs; each operation is a collapsible card (the first one starts open, or all of them when a config leaves three or fewer)
+- **Main Canvas**: Full-screen coordinate plane (2D for vector/matrix modes, 3D for tensor mode). In 2D modes, zoom with the wheel or the +/− buttons at the top right; Reset view appears once the view has moved
 - **No Scrolling**: Fully responsive, single-page layout
 - **Help System**: Comprehensive help modal with instructions and FAQ
 

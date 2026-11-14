@@ -220,7 +220,7 @@ class TensorCanvas3D {
         const p = this.project(pos.x, pos.y, pos.z);
         // Use provided color or fall back to theme text color
         this.ctx.fillStyle = color || this.colors.text || '#6b7280';
-        this.ctx.font = '12px Arial';
+        this.ctx.font = '500 11px "Work Sans", system-ui, sans-serif';
         this.ctx.fillText(text, p.x, p.y);
     }
 
@@ -359,7 +359,7 @@ class TensorCanvas3D {
         this.ctx.save();
         const projected = this.project(center.x, center.y, center.z);
         this.ctx.fillStyle = textColor;
-        this.ctx.font = 'bold 14px Arial';
+        this.ctx.font = '600 13px "Work Sans", system-ui, sans-serif';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(text, projected.x, projected.y);

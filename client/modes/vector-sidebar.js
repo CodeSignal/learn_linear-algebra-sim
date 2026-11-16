@@ -7,6 +7,7 @@
 // Operand dropdowns that list the user's vectors.
 // defaultSlot is the position in the vector list selected until the user picks
 // a vector, so two-operand operations start on different vectors.
+// withAxes also lists the x- and y-axis (see AXIS_OPTIONS).
 const OPERAND_SELECTS = [
   { key: 'addA', selector: '#add-vector-a-dropdown', defaultSlot: 0 },
   { key: 'addB', selector: '#add-vector-b-dropdown', defaultSlot: 1 },
@@ -14,12 +15,18 @@ const OPERAND_SELECTS = [
   { key: 'dotA', selector: '#dot-vector-a-dropdown', defaultSlot: 0 },
   { key: 'dotB', selector: '#dot-vector-b-dropdown', defaultSlot: 1 },
   { key: 'projectA', selector: '#project-vector-a-dropdown', defaultSlot: 0 },
-  { key: 'projectB', selector: '#project-vector-b-dropdown', defaultSlot: 1 },
+  { key: 'projectB', selector: '#project-vector-b-dropdown', defaultSlot: 1, withAxes: true },
   { key: 'normalize', selector: '#normalize-vector-dropdown', defaultSlot: 0 },
   { key: 'perpendicular', selector: '#perpendicular-vector-dropdown', defaultSlot: 0 },
   { key: 'reflect', selector: '#reflect-vector-dropdown', defaultSlot: 0 },
   { key: 'comboA', selector: '#combo-vector-a-dropdown', defaultSlot: 0 },
   { key: 'comboB', selector: '#combo-vector-b-dropdown', defaultSlot: 1 }
+];
+
+// Axis options for operand dropdowns with withAxes; values are what getOperandValue returns
+const AXIS_OPTIONS = [
+  { value: 'x-axis', label: 'X-axis' },
+  { value: 'y-axis', label: 'Y-axis' }
 ];
 
 // Coordinate field labels per coordinate mode; θ is in degrees
@@ -714,23 +721,26 @@ class VectorSidebar {
     if (signature === this.optionsSignature) return;
     this.optionsSignature = signature;
 
-    const items = vectors.map(v => ({ value: String(v.id), label: v.label }));
-    this.vectorLabels = new Map(items.map(item => [item.value, item.label]));
+    const vectorItems = vectors.map(v => ({ value: String(v.id), label: v.label }));
+    this.vectorLabels = new Map([...vectorItems, ...AXIS_OPTIONS].map(item => [item.value, item.label]));
 
-    OPERAND_SELECTS.forEach(({ key, defaultSlot }) => {
+    OPERAND_SELECTS.forEach(({ key, defaultSlot, withAxes }) => {
       const dropdown = this.dropdowns[key];
       if (!dropdown) return;
 
+      const items = withAxes ? [...AXIS_OPTIONS, ...vectorItems] : vectorItems; // axes first, so they stay visible with many vectors
       const current = dropdown.getValue();
-      if (!this.vectorLabels.has(current)) {
+      if (!items.some(item => item.value === current)) {
         this.userSelected[key] = false;
       }
 
       let selected = null;
       if (this.userSelected[key]) {
         selected = current;
-      } else if (items.length > 0) {
-        selected = items[Math.min(defaultSlot, items.length - 1)].value;
+      } else if (withAxes && vectorItems.length <= defaultSlot) {
+        selected = AXIS_OPTIONS[0].value; // too few vectors for a distinct default: use the x-axis
+      } else if (vectorItems.length > 0) {
+        selected = vectorItems[Math.min(defaultSlot, vectorItems.length - 1)].value;
       }
 
       const container = dropdown.container;
@@ -814,11 +824,29 @@ class VectorSidebar {
   /**
    * Get the vector id selected in an operand dropdown
    * @param {string} key - Operand key from OPERAND_SELECTS
-   * @returns {number|null} Vector id or null when nothing is selected
+   * @returns {number|null} Vector id or null when nothing (or an axis) is selected
    */
   getOperandId(key) {
-    const value = this.dropdowns[key] ? this.dropdowns[key].getValue() : null;
-    return value ? Number(value) : null;
+    const value = this.getOperandValue(key);
+    return value && !this.isAxisValue(value) ? Number(value) : null;
+  }
+
+  /**
+   * Get the raw value selected in an operand dropdown: a vector id as a string,
+   * or an axis value ('x-axis' / 'y-axis') in dropdowns with withAxes
+   * @param {string} key - Operand key from OPERAND_SELECTS
+   * @returns {string|null} Selected value or null
+   */
+  getOperandValue(key) {
+    return this.dropdowns[key] ? this.dropdowns[key].getValue() : null;
+  }
+
+  /**
+   * @param {string|null} value - Operand dropdown value
+   * @returns {boolean} Whether the value is an axis option
+   */
+  isAxisValue(value) {
+    return AXIS_OPTIONS.some(axis => axis.value === value);
   }
 
   /**

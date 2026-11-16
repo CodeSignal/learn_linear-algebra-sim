@@ -41,10 +41,14 @@ Files: `vector-mode.js`, `vector-canvas.js`, `vector-sidebar.js`,
      `vectorList`, and each operation group), plus `TWO_VECTOR_SECTIONS`
      when the cap is 1.
    - User vectors are created via `createVector(id)`: new vectors take the
-     lowest free id, are labelled `vₙ`, use
-     `styleConstants.colors.vectorPalette[id - 1]`, and carry `id`,
+     lowest free id, are labelled `vₙ`, use `vectorColor(id)`
+     (`styleConstants.colors.vectorPalette[id - 1]`, or its
+     `vectorPaletteDark[id]` override in dark theme), and carry `id`,
      `subscript`, and `name` (plain `vn` for logs). Remove individual vectors
      with `removeVector(id)`.
+   - The projection target dropdown (`withAxes` in `OPERAND_SELECTS`) also
+     lists the X- and Y-axis; `getOperand` turns them into î/ĵ via
+     `createAxisVector`. Results with a vector also show its polar form.
    - Typed input from the sidebar goes through `addVectorFromInput(x, y)` and
      `setVectorComponents(id, x, y)`. Both cancel running animations and
      clear visualizations, as drag edits do. `logVectorEdit(id)` logs a typed

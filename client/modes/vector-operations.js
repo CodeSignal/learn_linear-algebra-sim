@@ -31,6 +31,17 @@ class VectorOperations {
   }
 
   /**
+   * Format a vector in polar form so results can be read in either coordinate system
+   * @param {Vector} vector - Vector to format
+   * @returns {string} e.g. 'polar: r = 5.00, θ = 53.13°'
+   */
+  formatPolar(vector) {
+    const { r, theta } = vector.toPolar();
+    if (r < 1e-9) return 'polar: r = 0 (no direction)';
+    return `polar: r = ${r.toFixed(2)}, θ = ${theta.toFixed(2)}°`;
+  }
+
+  /**
    * Format a vector for log messages: name (x, y)
    * @param {Vector} vector - Vector to describe
    * @returns {string} Log-friendly description
@@ -164,11 +175,25 @@ class VectorOperations {
     }
 
     const result = vectorA.projectOnto(vectorB);
-    result.label = `proj_${b}(${a})`;
+    result.label = `proj_${vectorB.axisName || b}(${a})`;
 
     logAction(`Project operation: ${this.describe(vectorA)} onto ${this.describe(vectorB)}. Result: (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`);
 
     const dotProduct = vectorA.dot(vectorB);
+
+    // Onto an axis: the unit vector î or ĵ keeps only that component
+    if (vectorB.axisName) {
+      return {
+        resultVector: result,
+        clearParallelogram: true,
+        clearAngleArc: true,
+        resultLines: [
+          `${result.label} = (${a}·${b}) ${b}`,
+          `= ${dotProduct.toFixed(2)} × ${this.format(vectorB)}`,
+          `= ${this.format(result, 2)}`
+        ]
+      };
+    }
 
     const formula = `proj_${b}(${a}) = ((${a}·${b})/(${b}·${b})) × ${b}`;
     const calculation = `= ((${dotProduct.toFixed(2)})/(${mag2Squared.toFixed(2)})) × ${this.format(vectorB)}`;

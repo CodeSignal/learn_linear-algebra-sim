@@ -170,6 +170,7 @@ const STYLE_CONSTANTS = {
   animationDuration: 800, // milliseconds
   colors: {
     vectorPalette: ['#ef4444', '#3b82f6', /* ...one color per vector, 12 total */],
+    vectorPaletteDark: { 12: '#e11d48' }, // dark-theme overrides by vector id
     result: '#10b981',    // green
     // ...
   }

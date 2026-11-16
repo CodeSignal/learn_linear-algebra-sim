@@ -93,6 +93,8 @@ class VectorMode {
     if (window.CanvasThemeService) {
       this.themeUnsubscribe = window.CanvasThemeService.subscribe(() => {
         this.loadColors();
+        this.vectors.forEach(v => { v.color = this.vectorColor(v.id); });
+        this.updateUI();
         this.render();
       });
     }
@@ -216,14 +218,25 @@ class VectorMode {
   }
 
   /**
+   * Palette color for vector slot `id` in the current theme
+   * @param {number} id - Vector id (1-based)
+   * @returns {string} Hex color
+   */
+  vectorColor(id) {
+    const { vectorPalette, vectorPaletteDark } = this.styleConstants.colors;
+    const isDark = window.CanvasThemeService && window.CanvasThemeService.isDark();
+    if (isDark && vectorPaletteDark && vectorPaletteDark[id]) return vectorPaletteDark[id];
+    return vectorPalette[(id - 1) % vectorPalette.length];
+  }
+
+  /**
    * Create a zero-length vector for slot `id` with its palette color and label
    * @param {number} id - Vector id (1-based)
    * @returns {Vector} New vector
    */
   createVector(id) {
-    const palette = this.styleConstants.colors.vectorPalette;
     const subscript = String(id).split('').map(d => SUBSCRIPT_DIGITS[Number(d)]).join('');
-    const vector = new Vector(0, 0, palette[(id - 1) % palette.length], `v${subscript}`);
+    const vector = new Vector(0, 0, this.vectorColor(id), `v${subscript}`);
     vector.id = id;
     vector.subscript = subscript;
     vector.name = `v${id}`;
@@ -503,8 +516,24 @@ class VectorMode {
    * @returns {Vector|null} Selected vector
    */
   getOperand(key) {
+    const value = this.sidebar.getOperandValue(key);
+    if (this.sidebar.isAxisValue(value)) return this.createAxisVector(value);
     const id = this.sidebar.getOperandId(key);
     return id === null ? null : this.getVectorById(id);
+  }
+
+  /**
+   * Unit vector along an axis, used as an operand (e.g. projection onto the x-axis)
+   * @param {string} axis - 'x-axis' or 'y-axis'
+   * @returns {Vector} î or ĵ, with axisName set to 'x' or 'y'
+   */
+  createAxisVector(axis) {
+    const isX = axis === 'x-axis';
+    const vector = new Vector(isX ? 1 : 0, isX ? 0 : 1, this.colors.axis, isX ? 'î' : 'ĵ');
+    vector.subscript = '';
+    vector.name = axis;
+    vector.axisName = isX ? 'x' : 'y';
+    return vector;
   }
 
   clearAll() {
@@ -520,6 +549,17 @@ class VectorMode {
   }
 
   /**
+   * Show an operation's result lines; a result vector also gets its polar form,
+   * so it can be typed into a vector row in either coordinate system
+   * @param {Object} opResult - Result from VectorOperations
+   */
+  displayResultLines(opResult) {
+    const lines = [...opResult.resultLines];
+    if (opResult.resultVector) lines.push(this.operations.formatPolar(opResult.resultVector));
+    this.sidebar.displayResult(...lines);
+  }
+
+  /**
    * Show a single-vector or scalar operation result
    * @param {Object|null} opResult - Result from VectorOperations
    */
@@ -532,7 +572,7 @@ class VectorMode {
 
     if (opResult.resultVector) {
       this.animateToResult(opResult.resultVector, () => {
-        this.sidebar.displayResult(...opResult.resultLines);
+        this.displayResultLines(opResult);
       });
       return;
     }
@@ -558,7 +598,7 @@ class VectorMode {
       v2,
       negatedV2,
       () => {
-        this.sidebar.displayResult(...opResult.resultLines);
+        this.displayResultLines(opResult);
       },
       isLinearCombination ? opResult.parallelogramVectors : null
     );

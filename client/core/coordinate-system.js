@@ -403,15 +403,17 @@ class CoordinateSystem {
       this.ctx.setLineDash([5, 5]);
     }
 
-    // Draw line
+    // Draw line, stopping inside the arrowhead so the thick shaft doesn't poke out past the tip
+    const angle = Math.atan2(end.y - start.y, end.x - start.x);
+    const headlen = styleConstants.arrowHeadSize;
+    const screenLength = Math.hypot(end.x - start.x, end.y - start.y);
+    const shaftLength = Math.max(0, screenLength - headlen * Math.cos(Math.PI / 6) + 1);
     this.ctx.beginPath();
     this.ctx.moveTo(start.x, start.y);
-    this.ctx.lineTo(end.x, end.y);
+    this.ctx.lineTo(start.x + shaftLength * Math.cos(angle), start.y + shaftLength * Math.sin(angle));
     this.ctx.stroke();
 
     // Draw arrowhead
-    const angle = Math.atan2(end.y - start.y, end.x - start.x);
-    const headlen = styleConstants.arrowHeadSize;
 
     this.ctx.beginPath();
     this.ctx.moveTo(end.x, end.y);

@@ -115,7 +115,7 @@ class TensorMode {
     // Create sidebar content
     this.root.innerHTML = `
       <div class="sidebar-section">
-        <div class="sidebar-toolbar" data-section-container>
+        <div class="sidebar-toolbar">
           <h2 class="sidebar-title">Tensor</h2>
           <button id="tensor-reset" type="button" class="button button-tertiary button-xsmall toolbar-reset" data-section="reset"
             title="Reset tensor values and view"><span aria-hidden="true">↺</span> Reset</button>

@@ -209,6 +209,10 @@ class ResultsPanel {
   _scoreCornerPosition(corner, screenObjects) {
     if (!this.canvasContainer) return Infinity;
 
+    // The zoom / Reset view controls own the top-right corner while they are shown
+    const viewControls = this.canvasContainer.querySelector('#view-controls');
+    if (corner === 'top-right' && viewControls && !viewControls.hidden) return Infinity;
+
     const containerRect = this.canvasContainer.getBoundingClientRect();
     const panelWidth = this.isCollapsed ? 100 : 300;
     const panelHeight = this.isCollapsed ? 80 : 400;

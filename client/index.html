@@ -49,17 +49,18 @@
       <!-- Vector Mode Content -->
       <div class="mode-content" data-mode="vector">
         <div class="sidebar-section" data-section-container>
-          <div class="section-header" data-section-container>
-            <div id="coord-mode-dropdown" data-section="coordinateMode"></div>
-            <button id="canvas-reset" class="button button-secondary button-small" data-section="reset">Reset </button>
+          <div class="sidebar-toolbar" data-section-container>
+            <div class="toolbar-dropdown" data-section="coordinateMode"><div id="coord-mode-dropdown"></div></div>
+            <button id="canvas-reset" type="button" class="button button-tertiary button-xsmall toolbar-reset" data-section="reset"
+              title="Remove all vectors and results"><span aria-hidden="true">↺</span> Reset</button>
           </div>
           <div class="vector-list-section" data-section="vectorList">
-            <div class="vector-list-header">
-              <h2 class="heading-small">Vectors</h2>
+            <div class="sidebar-section-header">
+              <h2 class="sidebar-title">Vectors</h2>
               <div class="vector-list-actions">
-                <span id="vector-count" class="body-xsmall vector-count">0 / 12</span>
+                <span id="vector-count" class="vector-count">0 / 12</span>
                 <button id="vector-add" type="button" class="button button-secondary button-xsmall vector-add"
-                  aria-label="Add vector by coordinates" title="Add vector by coordinates">+</button>
+                  aria-label="Add vector by coordinates" title="Add vector by coordinates">+ Add</button>
               </div>
             </div>
             <div id="vector-list" class="vector-list"></div>
@@ -68,102 +69,119 @@
 
         <!-- Operations Section -->
         <div class="sidebar-section" data-section-container>
-          <h2 class="heading-small">Operations</h2>
-
-          <div class="operation-group" data-section="addition">
-            <div class="operation-label">
-              <span>Addition & Subtraction</span>
-            </div>
-            <div class="operand-row">
-              <div class="operand-select"><div id="add-vector-a-dropdown"></div></div>
-              <span class="operand-symbol body-large">±</span>
-              <div class="operand-select"><div id="add-vector-b-dropdown"></div></div>
-            </div>
-            <button id="op-add" class="button button-primary" disabled>Add</button>
-            <button id="op-subtract" class="button button-primary" disabled>Subtract</button>
+          <div class="sidebar-section-header">
+            <h2 class="sidebar-title">Operations</h2>
           </div>
 
-          <div class="operation-group" data-section="scalarMultiplication">
-            <div class="operation-label">
-              <span>Scalar Multiplication</span>
+          <details class="operation-group" data-section="addition">
+            <summary class="operation-label">Addition &amp; Subtraction</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <div class="operand-select"><div id="add-vector-a-dropdown"></div></div>
+                <span class="operand-symbol">±</span>
+                <div class="operand-select"><div id="add-vector-b-dropdown"></div></div>
+              </div>
+              <div class="operation-actions">
+                <button id="op-add" type="button" class="button button-secondary button-xsmall" disabled>Add</button>
+                <button id="op-subtract" type="button" class="button button-secondary button-xsmall" disabled>Subtract</button>
+              </div>
             </div>
-            <div class="operand-row">
-              <input type="number" id="scalar-input" class="input scalar-input" value="2" step="0.1" />
-              <span class="operand-symbol body-large">×</span>
-              <div class="operand-select"><div id="scale-vector-dropdown"></div></div>
-            </div>
-            <button id="op-scale" class="button button-primary" disabled>Scale</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="dotProduct">
-            <div class="operation-label">
-              <span>Dot Product</span>
+          <details class="operation-group" data-section="scalarMultiplication">
+            <summary class="operation-label">Scalar Multiplication</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <input type="number" id="scalar-input" class="input scalar-input" value="2" step="0.1" aria-label="Scalar" />
+                <span class="operand-symbol">×</span>
+                <div class="operand-select"><div id="scale-vector-dropdown"></div></div>
+              </div>
+              <div class="operation-actions">
+                <button id="op-scale" type="button" class="button button-secondary button-xsmall" disabled>Scale</button>
+              </div>
             </div>
-            <div class="operand-row">
-              <div class="operand-select"><div id="dot-vector-a-dropdown"></div></div>
-              <span class="operand-symbol body-large">·</span>
-              <div class="operand-select"><div id="dot-vector-b-dropdown"></div></div>
-            </div>
-            <button id="op-dot" class="button button-primary" disabled>Dot Product</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="projectionAngle">
-            <div class="operation-label">
-              <span>Projection & Angle</span>
+          <details class="operation-group" data-section="dotProduct">
+            <summary class="operation-label">Dot Product</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <div class="operand-select"><div id="dot-vector-a-dropdown"></div></div>
+                <span class="operand-symbol">·</span>
+                <div class="operand-select"><div id="dot-vector-b-dropdown"></div></div>
+              </div>
+              <div class="operation-actions">
+                <button id="op-dot" type="button" class="button button-secondary button-xsmall" disabled>Compute</button>
+              </div>
             </div>
-            <div class="operand-row">
-              <div class="operand-select"><div id="project-vector-a-dropdown"></div></div>
-              <span class="operand-symbol body-small">onto</span>
-              <div class="operand-select"><div id="project-vector-b-dropdown"></div></div>
-            </div>
-            <button id="op-project" class="button button-primary" disabled>Project</button>
-            <button id="op-angle" class="button button-primary" disabled>Angle Between</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="normalization">
-            <div class="operation-label">
-              <span>Normalization</span>
+          <details class="operation-group" data-section="projectionAngle">
+            <summary class="operation-label">Projection &amp; Angle</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <div class="operand-select"><div id="project-vector-a-dropdown"></div></div>
+                <span class="operand-symbol operand-word">onto</span>
+                <div class="operand-select"><div id="project-vector-b-dropdown"></div></div>
+              </div>
+              <div class="operation-actions">
+                <button id="op-project" type="button" class="button button-secondary button-xsmall" disabled>Project</button>
+                <button id="op-angle" type="button" class="button button-secondary button-xsmall" disabled>Angle</button>
+              </div>
             </div>
-            <div class="operand-select"><div id="normalize-vector-dropdown"></div></div>
-            <button id="op-normalize" class="button button-primary" disabled>Normalize</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="perpendicular">
-            <div class="operation-label">
-              <span>Perpendicular Vector</span>
+          <details class="operation-group" data-section="normalization">
+            <summary class="operation-label">Normalization</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <div class="operand-select"><div id="normalize-vector-dropdown"></div></div>
+                <button id="op-normalize" type="button" class="button button-secondary button-xsmall" disabled>Normalize</button>
+              </div>
             </div>
-            <div class="operand-select"><div id="perpendicular-vector-dropdown"></div></div>
-            <button id="op-perpendicular" class="button button-primary" disabled>Show Perpendicular</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="reflection">
-            <div class="operation-label">
-              <span>Reflection</span>
+          <details class="operation-group" data-section="perpendicular">
+            <summary class="operation-label">Perpendicular Vector</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <div class="operand-select"><div id="perpendicular-vector-dropdown"></div></div>
+                <button id="op-perpendicular" type="button" class="button button-secondary button-xsmall" disabled>Show</button>
+              </div>
             </div>
-            <div class="operand-row">
-              <div class="operand-select"><div id="reflect-vector-dropdown"></div></div>
-              <span class="operand-symbol body-small">across</span>
-              <div class="operand-select"><div id="reflect-type-dropdown"></div></div>
-            </div>
-            <button id="op-reflect" class="button button-primary" disabled>Reflect</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="linearCombination">
-            <div class="operation-label">
-              <span>Linear Combination</span>
+          <details class="operation-group" data-section="reflection">
+            <summary class="operation-label">Reflection</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <div class="operand-select"><div id="reflect-vector-dropdown"></div></div>
+                <span class="operand-symbol operand-word">across</span>
+                <div class="operand-select"><div id="reflect-type-dropdown"></div></div>
+              </div>
+              <div class="operation-actions">
+                <button id="op-reflect" type="button" class="button button-secondary button-xsmall" disabled>Reflect</button>
+              </div>
             </div>
-            <div class="linear-combo-control">
+          </details>
+
+          <details class="operation-group" data-section="linearCombination">
+            <summary class="operation-label">Linear Combination</summary>
+            <div class="operation-body">
               <div class="linear-combo-term">
-                <div id="lc-scalar-a"></div>
+                <div id="lc-scalar-a" class="linear-combo-slider"></div>
                 <div class="operand-select"><div id="combo-vector-a-dropdown"></div></div>
               </div>
               <div class="linear-combo-term">
-                <div id="lc-scalar-b"></div>
+                <div id="lc-scalar-b" class="linear-combo-slider"></div>
                 <div class="operand-select"><div id="combo-vector-b-dropdown"></div></div>
               </div>
-              <button id="op-linear-combo" class="button button-primary" disabled>Linear Combination</button>
+              <div class="operation-actions">
+                <span id="linear-combo-preview" class="operation-preview"></span>
+                <button id="op-linear-combo" type="button" class="button button-secondary button-xsmall" disabled>Combine</button>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
       </div>
       <!-- End Vector Mode Content -->
@@ -171,9 +189,10 @@
       <!-- Matrix Mode Content -->
       <div class="mode-content" data-mode="matrix">
         <div class="sidebar-section">
-          <div class="section-header" data-section-container>
-            <div></div>
-            <button id="matrix-reset" class="button button-secondary button-small" data-section="reset">Reset</button>
+          <div class="sidebar-toolbar">
+            <h2 class="sidebar-title">Inputs</h2>
+            <button id="matrix-reset" type="button" class="button button-tertiary button-xsmall toolbar-reset" data-section="reset"
+              title="Reset matrices and results"><span aria-hidden="true">↺</span> Reset</button>
           </div>
 
           <!-- Matrix Input Grid -->
@@ -254,50 +273,62 @@
 
         <!-- Operations Section -->
         <div class="sidebar-section" data-section-container>
-          <h2 class="heading-small">Operations</h2>
-
-          <div class="operation-group" data-section="addition">
-            <div class="operation-label">
-              <span>Addition</span>
-            </div>
-            <button id="op-matrix-add" class="button button-primary" disabled>Add A + B</button>
+          <div class="sidebar-section-header">
+            <h2 class="sidebar-title">Operations</h2>
           </div>
 
-          <div class="operation-group" data-section="scalarMultiplication">
-            <div class="operation-label">
-              <span>Scalar Multiplication</span>
+          <details class="operation-group" data-section="addition">
+            <summary class="operation-label">Addition</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <span class="operation-preview operation-formula">A + B</span>
+                <button id="op-matrix-add" type="button" class="button button-secondary button-xsmall" disabled>Add</button>
+              </div>
             </div>
-            <div class="scalar-control">
-              <input type="number" id="matrix-scalar-input" class="input" value="2" step="0.1" />
-              <span class="times-symbol body-large">×</span>
-              <div id="matrix-scalar-dropdown"></div>
-              <button id="op-matrix-scale" class="button button-primary btn-full-width" disabled>Scale</button>
-            </div>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="multiplication">
-            <div class="operation-label">
-              <span>Matrix Multiplication</span>
+          <details class="operation-group" data-section="scalarMultiplication">
+            <summary class="operation-label">Scalar Multiplication</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <input type="number" id="matrix-scalar-input" class="input scalar-input" value="2" step="0.1" aria-label="Scalar" />
+                <span class="operand-symbol">×</span>
+                <div class="operand-select"><div id="matrix-scalar-dropdown"></div></div>
+                <button id="op-matrix-scale" type="button" class="button button-secondary button-xsmall" disabled>Scale</button>
+              </div>
             </div>
-            <button id="op-matrix-multiply" class="button button-primary" disabled>Multiply A @ B</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="linearTransformation">
-            <div class="operation-label">
-              <span>Linear Transformation</span>
+          <details class="operation-group" data-section="multiplication">
+            <summary class="operation-label">Matrix Multiplication</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <span class="operation-preview operation-formula">A @ B</span>
+                <button id="op-matrix-multiply" type="button" class="button button-secondary button-xsmall" disabled>Multiply</button>
+              </div>
             </div>
-            <button id="op-compute-ax" class="button button-primary" disabled>Compute Ax</button>
-          </div>
+          </details>
 
-          <div class="operation-group" data-section="determinant">
-            <div class="operation-label">
-              <span>Determinant</span>
+          <details class="operation-group" data-section="linearTransformation">
+            <summary class="operation-label">Linear Transformation</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <span class="operation-preview operation-formula">Av</span>
+                <button id="op-compute-ax" type="button" class="button button-secondary button-xsmall" disabled>Apply</button>
+              </div>
             </div>
-            <div class="determinant-control">
-              <div id="determinant-matrix-dropdown"></div>
-              <button id="show-determinant" class="button button-primary btn-full-width">Show Area</button>
+          </details>
+
+          <details class="operation-group" data-section="determinant">
+            <summary class="operation-label">Determinant</summary>
+            <div class="operation-body">
+              <div class="operand-row">
+                <span class="operand-symbol operand-word">det</span>
+                <div class="operand-select"><div id="determinant-matrix-dropdown"></div></div>
+                <button id="show-determinant" type="button" class="button button-secondary button-xsmall">Show Area</button>
+              </div>
             </div>
-          </div>
+          </details>
         </div>
       </div>
       <!-- End Matrix Mode Content -->
@@ -312,7 +343,13 @@
     <!-- Canvas: Cartesian Plane -->
     <div class="canvas-container">
       <canvas id="grid-canvas"></canvas>
-      <button id="reset-view" type="button" class="button button-secondary button-small view-reset" hidden>Reset view</button>
+      <div id="view-controls" class="view-controls" hidden>
+        <div class="view-zoom">
+          <button id="zoom-in" type="button" class="button button-tertiary view-control-btn" aria-label="Zoom in" title="Zoom in">+</button>
+          <button id="zoom-out" type="button" class="button button-tertiary view-control-btn" aria-label="Zoom out" title="Zoom out">−</button>
+        </div>
+        <button id="reset-view" type="button" class="button button-tertiary button-xsmall view-reset" hidden>Reset view</button>
+      </div>
 
       <!-- Vector Mode Results Overlay -->
       <div id="vector-results"

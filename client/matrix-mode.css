@@ -35,8 +35,9 @@
 .matrix-input-section {
   display: flex;
   flex-direction: row;
-  gap: var(--UI-Spacing-spacing-mxs);
-  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--UI-Spacing-spacing-s);
+  justify-content: flex-start;
 }
 
 .matrix-input-section h3, .matrix-input-section h4 {
@@ -44,22 +45,25 @@
   color: var(--Colors-Text-Body-Default);
 }
 
-.matrix-display-wrapper {
+/* Each matrix / vector input is a small card */
+.matrix-display-wrapper,
+.mode-content[data-mode="matrix"] .vector-input-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--UI-Spacing-spacing-xs);
+  padding: var(--UI-Spacing-spacing-s) var(--UI-Spacing-spacing-mxs) var(--UI-Spacing-spacing-mxs);
+  background: var(--la-card-bg);
+  border: 1px solid var(--la-border);
+  border-radius: var(--UI-Radius-radius-s);
+  box-shadow: var(--la-shadow-soft);
+  width: auto;
 }
 
-.vector-input-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-/* Intentional exception: Times New Roman for math notation (matrix labels) */
+/* Math labels use the UI font in italic, matching the canvas labels */
 .matrix-label {
-  font-family: 'Times New Roman', serif;
   color: var(--Colors-Text-Body-Default);
+  font-size: var(--Fonts-Body-Default-sm);
   white-space: nowrap;
   display: flex;
   align-items: center;
@@ -115,9 +119,12 @@
   flex-direction: column;
   gap: var(--UI-Spacing-spacing-xxs);
   margin: 0;
-  padding: var(--UI-Spacing-spacing-s);
-  background: var(--Colors-Backgrounds-Main-Strong);
-  border-radius: var(--UI-Radius-radius-xxs);
+  padding: 0;
+}
+
+/* Column headers repeat the label above; the input border colors carry the coding */
+.mode-content[data-mode="matrix"] .matrix-column-headers {
+  display: none;
 }
 
 .matrix-row {
@@ -127,12 +134,27 @@
 }
 
 .bespoke input[type="number"].matrix-input {
-  width: 55px;
+  display: block; /* .input is flex, which ignores text-align on inputs */
+  width: 52px;
   height: var(--UI-Input-xs);
+  padding: 0 var(--UI-Spacing-spacing-xxs);
   text-align: center;
-  font-family: var(--code-family);
+  font-family: var(--body-family);
+  font-size: var(--Fonts-Body-Default-xs);
+  font-variant-numeric: tabular-nums;
   font-weight: 500;
-  border: 2px solid var(--Colors-Stroke-Default);
+  border-radius: var(--UI-Radius-radius-xs);
+  border: 1.5px solid var(--la-border);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Hide number spinners; values are typed */
+.bespoke input[type="number"].matrix-input::-webkit-outer-spin-button,
+.bespoke input[type="number"].matrix-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  display: none; /* the design system gives spinners a 32px width that eats the text area */
+  margin: 0;
 }
 
 /* WebKit autofill override for matrix inputs */
@@ -151,11 +173,9 @@
   margin-bottom: 0;
 }
 
-/* Intentional exception: Times New Roman for math notation (matrix column headers) */
 .matrix-column-label {
-  width: 55px;
+  width: 52px;
   text-align: center;
-  font-family: 'Times New Roman', serif;
   font-style: italic;
   font-weight: 700;
   padding: var(--UI-Spacing-spacing-xxs) 0;
@@ -292,15 +312,11 @@
   gap: var(--UI-Spacing-spacing-xxs);
 }
 
-/* Determinant Control - Pattern A: Single-Item Selection + Action */
-.determinant-control {
-  display: flex;
-  flex-direction: column;
-  gap: var(--UI-Spacing-spacing-mxs);
-}
-
-.determinant-control > div {
-  width: 100%;
+/* Formula shown next to single-action operations (e.g. "A + B") */
+.operation-preview.operation-formula {
+  font-style: italic;
+  font-size: var(--Fonts-Body-Default-sm);
+  color: var(--Colors-Text-Body-Default);
 }
 
 /* Responsive Design - Matrix Mode Specific */

@@ -15,9 +15,9 @@
     const getColor = (varName) => getComputedStyle(bespokeElement).getPropertyValue(varName).trim() || null;
 
     return {
-      grid: getColor('--Colors-Stroke-Stronger'),
-      axis: getColor('--Colors-Stroke-Primary-Dark'),
-      text: getColor('--Colors-Text-Body-Light'),
+      grid: getColor('--la-canvas-grid') || getColor('--Colors-Stroke-Default'),
+      axis: getColor('--la-canvas-axis') || getColor('--Colors-Stroke-Stronger'),
+      text: getColor('--la-canvas-text') || getColor('--Colors-Text-Body-Light'),
       hover: getColor('--Colors-Alert-Warning-Default'),
       hoverHighlight: getColor('--Colors-Alert-Warning-Medium-Dark'),
       accent: getColor('--Colors-Primary-Default') || '#3b82f6',

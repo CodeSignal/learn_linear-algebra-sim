@@ -115,6 +115,23 @@ function applySections(root, sections) {
 }
 
 /**
+ * Choose which collapsible operation groups (`<details class="operation-group">`)
+ * start open. With only a few operations left after config filtering, all of
+ * them open; otherwise only the first does, so the sidebar stays short.
+ * Call after applySections.
+ * @param {Element} root - Mode sidebar root
+ * @param {number} [openAllUpTo=3] - Open every group when there are this many or fewer
+ */
+function openInitialGroups(root, openAllUpTo = 3) {
+  if (!root) return;
+  const groups = Array.from(root.querySelectorAll('details.operation-group'));
+  const openAll = groups.length <= openAllUpTo;
+  groups.forEach((group, index) => {
+    group.open = openAll || index === 0;
+  });
+}
+
+/**
  * @param {Object} sections - Resolved `{ key: boolean }` map
  * @param {string} key - Section key
  * @returns {boolean} False only when the section is explicitly hidden
@@ -127,5 +144,6 @@ window.SidebarSections = {
   SIDEBAR_SECTIONS,
   resolveSections,
   applySections,
+  openInitialGroups,
   isShown: isSectionShown
 };

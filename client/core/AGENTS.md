@@ -31,6 +31,10 @@ across future Bespoke apps.
     flag is false, then removes `[data-section-container]` wrappers left
     without sections. Removal is permanent for the page session, so callers
     must run it before caching elements and must tolerate missing elements.
+  - `openInitialGroups(root, openAllUpTo = 3)` sets which collapsible
+    `<details class="operation-group">` cards start open: all of them when
+    there are `openAllUpTo` or fewer, otherwise only the first. Modes call it
+    right after `applySections`.
   - `isShown(sections, key)` for logic that depends on a section.
 - `mode-manager.js` (`window.ModeManager`)\
   - Owns `.mode-content` visibility and the shared `CoordinateSystem`.
@@ -56,6 +60,9 @@ across future Bespoke apps.
   - Reads CSS custom properties under `.bespoke` (which are mapped from Design
     System tokens via `bespoke.css`). Use this to keep colors responsive to
     theme changes instead of hard-coding hex values.
+  - Canvas grid, axis and tick-label colors come from the app tokens
+    `--la-canvas-grid`, `--la-canvas-axis` and `--la-canvas-text`
+    (defined with light/dark values in `layout.css`).
 - `animator.js` (`class Animator`)\
   - Pure animation helpers (ease curves, `animate`, `lerp`, `lerpVector`).
     Returns a control object with `cancel()`. Modes must cancel outstanding
@@ -82,7 +89,10 @@ across future Bespoke apps.
     canvas handlers never see them.
   - Options: `viewKey`, `onChange` (throttled to one call per frame),
     `panWithPrimaryButton`, `resetButton` (shown only when the view differs
-    from the default). Logs pans, zooms (debounced), and resets via
+    from the default), `controls` (the `#view-controls` container, shown while
+    the controller lives and hidden by `destroy()`), and
+    `zoomInButton` / `zoomOutButton` (zoom around the canvas center by
+    `BUTTON_ZOOM_FACTOR`). Logs pans, zooms (debounced), and resets via
     `logAction`. Modes must call `destroy()` in their own `destroy()`.
 - `vector.js` (`class Vector`)\
   - Immutable 2D vector with math helpers (`add`, `subtract`, `scale`, `dot`,

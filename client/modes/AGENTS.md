@@ -41,10 +41,14 @@ Files: `vector-mode.js`, `vector-canvas.js`, `vector-sidebar.js`,
      `vectorList`, and each operation group), plus `TWO_VECTOR_SECTIONS`
      when the cap is 1.
    - User vectors are created via `createVector(id)`: new vectors take the
-     lowest free id, are labelled `vₙ`, use
-     `styleConstants.colors.vectorPalette[id - 1]`, and carry `id`,
+     lowest free id, are labelled `vₙ`, use `vectorColor(id)`
+     (`styleConstants.colors.vectorPalette[id - 1]`, or its
+     `vectorPaletteDark[id]` override in dark theme), and carry `id`,
      `subscript`, and `name` (plain `vn` for logs). Remove individual vectors
      with `removeVector(id)`.
+   - The projection target dropdown (`withAxes` in `OPERAND_SELECTS`) also
+     lists the X- and Y-axis; `getOperand` turns them into î/ĵ via
+     `createAxisVector`. Results with a vector also show its polar form.
    - Typed input from the sidebar goes through `addVectorFromInput(x, y)` and
      `setVectorComponents(id, x, y)`. Both cancel running animations and
      clear visualizations, as drag edits do. `logVectorEdit(id)` logs a typed
@@ -105,7 +109,14 @@ Files: `vector-mode.js`, `vector-canvas.js`, `vector-sidebar.js`,
      the set of vector ids changes, keeps explicit user picks, and otherwise
      falls back to each select's `defaultSlot`.
    - The Design System `Dropdown` overwrites its container's `className`, so
-     layout classes (e.g. `.operand-select`) go on a wrapper element.
+     layout classes (e.g. `.operand-select`) go on a wrapper element. Sidebar
+     dropdowns do not use `growToFit` (it forces a 200px inline width).
+   - Operation buttons keep short fixed labels (Add, Subtract, Compute, …);
+     the operand dropdowns already show which vectors are used. Only the
+     linear combination shows a live preview (`#linear-combo-preview`).
+   - Each operation is a collapsible `<details class="operation-group">`
+     card (`summary.operation-label` + `.operation-body`); which cards start
+     open is set by `SidebarSections.openInitialGroups`.
    - `updateUI()` (inside `VectorMode`) should drive button enabling/disabling
      through methods on this class; keep logic centralized here.
 4. **VectorOperations**

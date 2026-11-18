@@ -20,7 +20,7 @@ const STYLE_CONSTANTS = {
   arrowHeadSize: 12,      // pixels
   vectorLineWidth: 3,
   gridLineWidth: 1,
-  axisLineWidth: 2,
+  axisLineWidth: 1.5,
   hitRadius: 15,          // pixels for endpoint hit detection
   colors: {
     // Domain-specific colors (intentional exceptions, not in design system)
@@ -35,10 +35,14 @@ const STYLE_CONSTANTS = {
       '#f97316', // orange
       '#6366f1', // indigo
       '#a16207', // brown
-      '#64748b', // slate
+      '#65a30d', // lime
       '#d946ef', // fuchsia
       '#9f1239'  // crimson
     ],
+    // Dark-theme replacements for palette colors that are too dark on the dark canvas, keyed by vector id
+    vectorPaletteDark: {
+      12: '#e11d48' // lighter crimson
+    },
     result: '#10b981',    // green
     matrixBasisI: '#ef4444',  // red for î_A
     matrixBasisJ: '#3b82f6',  // blue for ĵ_A

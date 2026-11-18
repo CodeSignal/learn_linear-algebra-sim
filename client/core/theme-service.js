@@ -60,6 +60,14 @@
     }
 
     /**
+     * Whether the dark theme is active
+     * @returns {boolean}
+     */
+    isDark() {
+      return Boolean(this.darkModeQuery && this.darkModeQuery.matches);
+    }
+
+    /**
      * Get current colors (cached)
      * @returns {Object} Color object
      */

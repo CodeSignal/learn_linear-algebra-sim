@@ -111,6 +111,9 @@ class MatrixMode {
       viewKey: 'matrix',
       panWithPrimaryButton: true,
       resetButton: document.getElementById('reset-view'),
+      controls: document.getElementById('view-controls'),
+      zoomInButton: document.getElementById('zoom-in'),
+      zoomOutButton: document.getElementById('zoom-out'),
       onChange: () => this.render()
     });
     this.coordSystem.setResizeCallback(() => this.render());
@@ -132,8 +135,7 @@ class MatrixMode {
           { value: 'A', label: 'A' },
           { value: 'B', label: 'B' }
         ],
-        selectedValue: 'A',
-        growToFit: true
+        selectedValue: 'A'
       });
     }
 
@@ -146,7 +148,6 @@ class MatrixMode {
           { value: 'B', label: 'B' }
         ],
         selectedValue: 'A',
-        growToFit: true,
         onSelect: (value) => {
           this.selectedDeterminantMatrix = value;
           // If visualization is active, update it immediately
@@ -202,6 +203,7 @@ class MatrixMode {
       sections.linearTransformation = false;
     }
     window.SidebarSections.applySections(this.root, sections);
+    window.SidebarSections.openInitialGroups(this.root);
   }
 
   /**
@@ -849,7 +851,6 @@ class MatrixMode {
     this.dropdowns.determinantMatrixSelect = new window.Dropdown(container, {
       items: availableItems,
       selectedValue: newValue,
-      growToFit: true,
       onSelect: (value) => {
         this.selectedDeterminantMatrix = value;
         // If visualization is active, update it immediately
@@ -889,8 +890,7 @@ class MatrixMode {
     // Recreate with filtered items
     this.dropdowns.matrixScalarSelect = new window.Dropdown(container, {
       items: availableItems,
-      selectedValue: newValue,
-      growToFit: true
+      selectedValue: newValue
     });
   }
 
@@ -1169,7 +1169,7 @@ class MatrixMode {
 
     // Draw area label at center
     ctx.globalAlpha = 1;
-    ctx.font = 'bold 14px Arial';
+    ctx.font = '600 13px "Work Sans", system-ui, sans-serif';
     // Use darker shade for text (approximate darkening)
     ctx.fillStyle = fillColor; // Will use the same color, but could be enhanced with darkening
     ctx.textAlign = 'center';

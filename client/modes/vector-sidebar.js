@@ -7,6 +7,7 @@
 // Operand dropdowns that list the user's vectors.
 // defaultSlot is the position in the vector list selected until the user picks
 // a vector, so two-operand operations start on different vectors.
+// withAxes also lists the x- and y-axis (see AXIS_OPTIONS).
 const OPERAND_SELECTS = [
   { key: 'addA', selector: '#add-vector-a-dropdown', defaultSlot: 0 },
   { key: 'addB', selector: '#add-vector-b-dropdown', defaultSlot: 1 },
@@ -14,12 +15,18 @@ const OPERAND_SELECTS = [
   { key: 'dotA', selector: '#dot-vector-a-dropdown', defaultSlot: 0 },
   { key: 'dotB', selector: '#dot-vector-b-dropdown', defaultSlot: 1 },
   { key: 'projectA', selector: '#project-vector-a-dropdown', defaultSlot: 0 },
-  { key: 'projectB', selector: '#project-vector-b-dropdown', defaultSlot: 1 },
+  { key: 'projectB', selector: '#project-vector-b-dropdown', defaultSlot: 1, withAxes: true },
   { key: 'normalize', selector: '#normalize-vector-dropdown', defaultSlot: 0 },
   { key: 'perpendicular', selector: '#perpendicular-vector-dropdown', defaultSlot: 0 },
   { key: 'reflect', selector: '#reflect-vector-dropdown', defaultSlot: 0 },
   { key: 'comboA', selector: '#combo-vector-a-dropdown', defaultSlot: 0 },
   { key: 'comboB', selector: '#combo-vector-b-dropdown', defaultSlot: 1 }
+];
+
+// Axis options for operand dropdowns with withAxes; values are what getOperandValue returns
+const AXIS_OPTIONS = [
+  { value: 'x-axis', label: 'X-axis' },
+  { value: 'y-axis', label: 'Y-axis' }
 ];
 
 // Coordinate field labels per coordinate mode; θ is in degrees
@@ -53,6 +60,7 @@ class VectorSidebar {
       opPerpendicular: this.root.querySelector('#op-perpendicular'),
       opReflect: this.root.querySelector('#op-reflect'),
       opLinearCombo: this.root.querySelector('#op-linear-combo'),
+      linearComboPreview: this.root.querySelector('#linear-combo-preview'),
 
       // Inputs
       scalarInput: this.root.querySelector('#scalar-input')
@@ -112,8 +120,7 @@ class VectorSidebar {
           { value: 'cartesian', label: 'Cartesian' },
           { value: 'polar', label: 'Polar' }
         ],
-        selectedValue: 'cartesian',
-        growToFit: true
+        selectedValue: 'cartesian'
       });
     }
 
@@ -177,7 +184,35 @@ class VectorSidebar {
         showInputs: true,
         onChange: () => this.updateLinearComboButton()
       });
+      this.showDecimalsInSliderInput(this.sliders[key]);
     });
+  }
+
+  /**
+   * The design-system slider writes Math.round(value) into its number box on
+   * every change, so 2.5 shows as "3" and typing "2.5" is cut to "2" mid-typing.
+   * Show the value with one decimal instead, and leave the box alone while the
+   * user is typing in it.
+   * @param {NumericSlider} slider - Single-value slider with showInputs
+   */
+  showDecimalsInSliderInput(slider) {
+    const input = slider && slider.valueInput;
+    if (!input) return;
+    const baseUpdate = slider.updateVisuals.bind(slider);
+    slider.updateVisuals = () => {
+      // Run the original update without its input write, then write our own
+      const showInputs = slider.config.showInputs;
+      slider.config.showInputs = false;
+      try {
+        baseUpdate();
+      } finally {
+        slider.config.showInputs = showInputs;
+      }
+      if (document.activeElement !== input) {
+        input.value = String(Number(slider.values.toFixed(1)) || 0);
+      }
+    };
+    slider.updateVisuals();
   }
 
   /**
@@ -292,7 +327,7 @@ class VectorSidebar {
     if (!this.emptyMessage) {
       this.emptyMessage = document.createElement('p');
       this.emptyMessage.className = 'vector-list-empty body-xsmall';
-      this.emptyMessage.textContent = 'Click and drag on the grid to draw a vector, or press + to type one in.';
+      this.emptyMessage.textContent = 'Click and drag on the grid to draw a vector, or press + Add to type one in.';
     }
     return this.emptyMessage;
   }
@@ -370,7 +405,7 @@ class VectorSidebar {
   updateVectorRow(row, coordinateMode, force = false) {
     const { vector } = row;
     row.label.textContent = vector.label;
-    row.label.style.color = vector.color;
+    row.label.style.setProperty('--vector-color', vector.color);
     row.remove.setAttribute('aria-label', `Remove ${vector.label}`);
 
     if (row.coordinateMode !== coordinateMode) {
@@ -522,7 +557,7 @@ class VectorSidebar {
   updateDraftRow(nextVector, coordinateMode) {
     const draft = this.draft;
     draft.label.textContent = nextVector.label;
-    draft.label.style.color = nextVector.color;
+    draft.label.style.setProperty('--vector-color', nextVector.color);
     draft.confirm.setAttribute('aria-label', `Add ${nextVector.label}`);
     draft.nextLabel = nextVector.label;
 
@@ -686,23 +721,26 @@ class VectorSidebar {
     if (signature === this.optionsSignature) return;
     this.optionsSignature = signature;
 
-    const items = vectors.map(v => ({ value: String(v.id), label: v.label }));
-    this.vectorLabels = new Map(items.map(item => [item.value, item.label]));
+    const vectorItems = vectors.map(v => ({ value: String(v.id), label: v.label }));
+    this.vectorLabels = new Map([...vectorItems, ...AXIS_OPTIONS].map(item => [item.value, item.label]));
 
-    OPERAND_SELECTS.forEach(({ key, defaultSlot }) => {
+    OPERAND_SELECTS.forEach(({ key, defaultSlot, withAxes }) => {
       const dropdown = this.dropdowns[key];
       if (!dropdown) return;
 
+      const items = withAxes ? [...AXIS_OPTIONS, ...vectorItems] : vectorItems; // axes first, so they stay visible with many vectors
       const current = dropdown.getValue();
-      if (!this.vectorLabels.has(current)) {
+      if (!items.some(item => item.value === current)) {
         this.userSelected[key] = false;
       }
 
       let selected = null;
       if (this.userSelected[key]) {
         selected = current;
-      } else if (items.length > 0) {
-        selected = items[Math.min(defaultSlot, items.length - 1)].value;
+      } else if (withAxes && vectorItems.length <= defaultSlot) {
+        selected = AXIS_OPTIONS[0].value; // too few vectors for a distinct default: use the x-axis
+      } else if (vectorItems.length > 0) {
+        selected = vectorItems[Math.min(defaultSlot, vectorItems.length - 1)].value;
       }
 
       const container = dropdown.container;
@@ -728,39 +766,25 @@ class VectorSidebar {
   }
 
   /**
-   * Update operation button text to reflect the selected operands
+   * Refresh text that depends on the selected operands. Operation buttons keep
+   * short fixed labels (the dropdowns already show the operands); only the
+   * linear combination shows a preview of the expression it will draw.
    */
   updateOperationLabels() {
-    const a = this.getOperandLabel('addA');
-    const b = this.getOperandLabel('addB');
-    const dotA = this.getOperandLabel('dotA');
-    const dotB = this.getOperandLabel('dotB');
-    const projA = this.getOperandLabel('projectA');
-    const projB = this.getOperandLabel('projectB');
-
-    const setText = (element, text) => {
-      if (element) element.textContent = text;
-    };
-
-    setText(this.elements.opAdd, a && b ? `Add ${a} + ${b}` : 'Add');
-    setText(this.elements.opSubtract, a && b ? `Subtract ${a} - ${b}` : 'Subtract');
-    setText(this.elements.opDot, dotA && dotB ? `${dotA} · ${dotB}` : 'Dot Product');
-    setText(this.elements.opProject, projA && projB ? `Project ${projA} onto ${projB}` : 'Project');
-    setText(this.elements.opAngle, projA && projB ? `Angle Between ${projA} & ${projB}` : 'Angle Between');
-
     this.updateLinearComboButton();
   }
 
   /**
-   * Update linear combination button text
+   * Update the linear combination preview (e.g. "2v₁ − v₂")
    */
   updateLinearComboButton() {
-    if (!this.elements.opLinearCombo) return;
+    const preview = this.elements.linearComboPreview;
+    if (!preview) return;
 
     const labelA = this.getOperandLabel('comboA');
     const labelB = this.getOperandLabel('comboB');
     if (!labelA || !labelB) {
-      this.elements.opLinearCombo.textContent = 'Linear Combination';
+      preview.textContent = '';
       return;
     }
 
@@ -770,13 +794,12 @@ class VectorSidebar {
     const roundedA = Math.round(scalarA * 10) / 10;
     const roundedB = Math.round(scalarB * 10) / 10;
 
-    // Format the button text with proper signs
-    const aText = roundedA === 1 ? '' : roundedA === -1 ? '-' : roundedA;
-    const bText = roundedB >= 0
-      ? ` + ${roundedB === 1 ? '' : roundedB}`
-      : ` - ${Math.abs(roundedB) === 1 ? '' : Math.abs(roundedB)}`;
+    // Format with proper signs; a coefficient of 1 is implied
+    const aText = roundedA === 1 ? '' : roundedA === -1 ? '−' : String(roundedA).replace('-', '−');
+    const bAbs = Math.abs(roundedB);
+    const bText = `${roundedB >= 0 ? ' + ' : ' − '}${bAbs === 1 ? '' : bAbs}`;
 
-    this.elements.opLinearCombo.textContent = `${aText}${labelA}${bText}${labelB}`;
+    preview.textContent = `${aText}${labelA}${bText}${labelB}`;
   }
 
   /**
@@ -801,11 +824,29 @@ class VectorSidebar {
   /**
    * Get the vector id selected in an operand dropdown
    * @param {string} key - Operand key from OPERAND_SELECTS
-   * @returns {number|null} Vector id or null when nothing is selected
+   * @returns {number|null} Vector id or null when nothing (or an axis) is selected
    */
   getOperandId(key) {
-    const value = this.dropdowns[key] ? this.dropdowns[key].getValue() : null;
-    return value ? Number(value) : null;
+    const value = this.getOperandValue(key);
+    return value && !this.isAxisValue(value) ? Number(value) : null;
+  }
+
+  /**
+   * Get the raw value selected in an operand dropdown: a vector id as a string,
+   * or an axis value ('x-axis' / 'y-axis') in dropdowns with withAxes
+   * @param {string} key - Operand key from OPERAND_SELECTS
+   * @returns {string|null} Selected value or null
+   */
+  getOperandValue(key) {
+    return this.dropdowns[key] ? this.dropdowns[key].getValue() : null;
+  }
+
+  /**
+   * @param {string|null} value - Operand dropdown value
+   * @returns {boolean} Whether the value is an axis option
+   */
+  isAxisValue(value) {
+    return AXIS_OPTIONS.some(axis => axis.value === value);
   }
 
   /**

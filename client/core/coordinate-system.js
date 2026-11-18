@@ -272,7 +272,7 @@ class CoordinateSystem {
     ctx.strokeStyle = this.colors.axis;
     ctx.lineWidth = this.styleConstants.axisLineWidth;
     ctx.fillStyle = this.colors.text;
-    ctx.font = '12px Arial';
+    ctx.font = '500 11px "Work Sans", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -328,7 +328,7 @@ class CoordinateSystem {
     ctx.fillText('0', originX - 15, originY + 15);
 
     // Draw axis labels
-    ctx.font = 'bold 14px Arial';
+    ctx.font = 'italic 500 14px "Work Sans", system-ui, sans-serif';
     ctx.fillText('x', this.width - 20, Math.min(Math.max(originY + 20, 20), this.height - 20));
     ctx.fillText('y', Math.min(Math.max(originX + 20, 20), this.width - 20), 20);
   }
@@ -403,15 +403,17 @@ class CoordinateSystem {
       this.ctx.setLineDash([5, 5]);
     }
 
-    // Draw line
+    // Draw line, stopping inside the arrowhead so the thick shaft doesn't poke out past the tip
+    const angle = Math.atan2(end.y - start.y, end.x - start.x);
+    const headlen = styleConstants.arrowHeadSize;
+    const screenLength = Math.hypot(end.x - start.x, end.y - start.y);
+    const shaftLength = Math.max(0, screenLength - headlen * Math.cos(Math.PI / 6) + 1);
     this.ctx.beginPath();
     this.ctx.moveTo(start.x, start.y);
-    this.ctx.lineTo(end.x, end.y);
+    this.ctx.lineTo(start.x + shaftLength * Math.cos(angle), start.y + shaftLength * Math.sin(angle));
     this.ctx.stroke();
 
     // Draw arrowhead
-    const angle = Math.atan2(end.y - start.y, end.x - start.x);
-    const headlen = styleConstants.arrowHeadSize;
 
     this.ctx.beginPath();
     this.ctx.moveTo(end.x, end.y);
@@ -445,7 +447,7 @@ class CoordinateSystem {
 
     // Draw label using smart positioning
     if (vector.label) {
-      this.ctx.font = 'bold 16px serif';
+      this.ctx.font = 'italic 600 16px "Work Sans", system-ui, sans-serif';
       this.ctx.fillStyle = drawColor;
       const labelPos = this.computeLabelPosition(vector);
 
@@ -457,7 +459,7 @@ class CoordinateSystem {
         // Measure base label width to position subscript
         const baseTextMetrics = this.ctx.measureText(vector.label);
         const subscriptFontSize = 11; // ~70% of base 16px font
-        this.ctx.font = `bold ${subscriptFontSize}px serif`;
+        this.ctx.font = `600 ${subscriptFontSize}px "Work Sans", system-ui, sans-serif`;
         this.ctx.fillText(subscript, labelPos.x + baseTextMetrics.width + 1, labelPos.y + 5);
       }
     }

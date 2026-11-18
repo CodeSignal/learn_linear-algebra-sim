@@ -12,22 +12,88 @@
   gap: var(--UI-Spacing-spacing-s);
 }
 
-.rank-selector {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--UI-Spacing-spacing-s);
+.control-group > .sidebar-title {
+  margin: 0;
 }
 
-/* Rank button styles are now handled by design system .button classes */
+/* Rank picker: segmented control, one column per available rank */
+.rank-selector {
+  display: grid;
+  grid-template-columns: repeat(var(--rank-count, 4), 1fr);
+  gap: 2px;
+  padding: 3px;
+  background: var(--Colors-Backgrounds-Main-Medium);
+  border-radius: var(--UI-Radius-radius-s);
+}
+
+.bespoke .rank-selector .rank-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  height: auto;
+  min-width: 0;
+  padding: var(--UI-Spacing-spacing-xs) var(--UI-Spacing-spacing-xxs);
+  border: none;
+  border-radius: var(--UI-Radius-radius-xs);
+  background: transparent;
+  color: var(--Colors-Text-Body-Light);
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.bespoke .rank-selector .rank-btn:hover {
+  border: none;
+  background: transparent;
+  color: var(--Colors-Text-Body-Strong);
+}
+
+.bespoke .rank-selector .rank-btn.active {
+  background: var(--la-card-bg);
+  color: var(--Colors-Text-Body-Strong);
+  box-shadow: var(--la-shadow-soft), 0 0 0 1px var(--la-border);
+}
+
+.rank-number {
+  font-size: var(--Fonts-Body-Default-md);
+  font-weight: 600;
+}
+
+.rank-name {
+  font-size: 11px;
+  font-weight: 500;
+}
 
 .tensor-input-container {
-  background: var(--Colors-Backgrounds-Main-Medium);
+  background: var(--la-card-bg);
   padding: var(--UI-Spacing-spacing-mxs);
-  border-radius: var(--UI-Radius-radius-xs);
-  border: 1px solid var(--Colors-Stroke-Default);
+  border-radius: var(--UI-Radius-radius-s);
+  border: 1px solid var(--la-border);
+  box-shadow: var(--la-shadow-soft);
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.tensor-input-label,
+.slice-label {
+  display: block;
+  font-size: var(--Fonts-Body-Default-xxs);
+  font-weight: 600;
+  color: var(--Colors-Text-Body-Default);
+  margin-bottom: var(--UI-Spacing-spacing-xs);
+}
+
+.slice-label {
+  font-weight: 500;
+  color: var(--Colors-Text-Body-Light);
+}
+
+.tensor-hint {
+  margin: 0;
+  font-size: var(--Fonts-Body-Default-xxs);
+  color: var(--Colors-Text-Body-Light);
 }
 
 .scalar-input-wrapper,
@@ -53,30 +119,15 @@
 }
 
 .slice {
-  background: var(--Colors-Backgrounds-Main-Default);
-  padding: var(--UI-Spacing-spacing-s);
-  border-radius: var(--UI-Radius-radius-xxs);
-  border: 1px solid var(--Colors-Stroke-Default);
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-.slice span {
-  display: block;
-  margin-bottom: var(--UI-Spacing-spacing-xxs);
-  color: var(--Colors-Text-Body-Light);
-}
-
-/* Tensor input styles - consistent across all ranks */
+/* Tensor input styles - consistent across all ranks (base look comes from matrix-mode.css) */
 .tensor-input-container input[type="number"].matrix-input {
-  width: 55px;
-  height: 32px;
   max-width: 100%;
   box-sizing: border-box;
-  text-align: center;
-  font-family: var(--code-family);
-  border: 2px solid var(--Colors-Stroke-Default);
 }
 
 /* Scalar input - centered single input */
@@ -92,8 +143,8 @@
   gap: var(--UI-Spacing-spacing-xxs);
   margin: 0;
   padding: var(--UI-Spacing-spacing-s);
-  background: var(--Colors-Backgrounds-Main-Strong);
-  border-radius: var(--UI-Radius-radius-xxs);
+  background: var(--Colors-Backgrounds-Main-Default);
+  border-radius: var(--UI-Radius-radius-xs);
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -125,4 +176,7 @@
 .tensor-input-container input[type="number"].matrix-input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px var(--Colors-Backgrounds-Main-Top) inset !important;
   -webkit-text-fill-color: var(--Colors-Text-Body-Default) !important;
+}
+.tensor-input-label {
+  align-self: flex-start;
 }

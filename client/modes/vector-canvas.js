@@ -214,7 +214,8 @@ class VectorCanvas {
 
     // Projection: perpendicular drop from the projected vector's tip
     if (state.projectionState && state.resultVector) {
-      this.drawProjectionDrop(state.projectionState.source, state.resultVector);
+      const { source, target } = state.projectionState;
+      this.drawProjectionDrop(source, state.resultVector, target);
     }
 
     // Draw result vector
@@ -247,15 +248,36 @@ class VectorCanvas {
    * right-angle mark where it meets the projection
    * @param {Vector} source - Vector that was projected
    * @param {Vector} projection - Projection result
+   * @param {Vector} [target] - Vector projected onto; when the projection points
+   *   away from it (obtuse angle), its line is extended through the origin
    */
-  drawProjectionDrop(source, projection) {
+  drawProjectionDrop(source, projection, target) {
     const from = this.coordSystem.mathToScreen(source.x, source.y);
     const to = this.coordSystem.mathToScreen(projection.x, projection.y);
+    const ctx = this.ctx;
+    const { parallelogram } = this.styleConstants;
+
+    // Guide along the target's line, so the drop line meets something
+    if (target && projection.x * target.x + projection.y * target.y < 0) {
+      const origin = this.coordSystem.mathToScreen(0, 0);
+      ctx.save();
+      ctx.strokeStyle = target.color;
+      ctx.globalAlpha = parallelogram.opacity;
+      ctx.lineWidth = parallelogram.lineWidth;
+      ctx.setLineDash(parallelogram.dashPattern);
+      // Run a little past the projection's tip so the guide isn't hidden under it
+      const length = Math.hypot(to.x - origin.x, to.y - origin.y);
+      const overshoot = length > 0 ? 1 + 30 / length : 1;
+      ctx.beginPath();
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(origin.x + (to.x - origin.x) * overshoot, origin.y + (to.y - origin.y) * overshoot);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     const dropLength = Math.hypot(from.x - to.x, from.y - to.y);
     if (dropLength < 1) return; // source already lies on the line
 
-    const ctx = this.ctx;
-    const { parallelogram } = this.styleConstants;
     ctx.save();
     ctx.strokeStyle = source.color;
     ctx.globalAlpha = parallelogram.opacity;

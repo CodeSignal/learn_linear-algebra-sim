@@ -185,6 +185,7 @@ class VectorOperations {
     if (vectorB.axisName) {
       return {
         resultVector: result,
+        projectionState: { source: vectorA },
         clearParallelogram: true,
         clearAngleArc: true,
         resultLines: [

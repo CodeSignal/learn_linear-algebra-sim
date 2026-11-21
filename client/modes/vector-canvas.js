@@ -248,8 +248,9 @@ class VectorCanvas {
    * right-angle mark where it meets the projection
    * @param {Vector} source - Vector that was projected
    * @param {Vector} projection - Projection result
-   * @param {Vector} [target] - Vector projected onto; when the projection points
-   *   away from it (obtuse angle), its line is extended through the origin
+   * @param {Vector} [target] - Vector or axis projected onto. When the projection
+   *   points away from a vector (obtuse angle), its line is extended through the
+   *   origin; the target also orients the right-angle mark for a zero projection.
    */
   drawProjectionDrop(source, projection, target) {
     const from = this.coordSystem.mathToScreen(source.x, source.y);
@@ -258,7 +259,7 @@ class VectorCanvas {
     const { parallelogram } = this.styleConstants;
 
     // Guide along the target's line, so the drop line meets something
-    if (target && projection.x * target.x + projection.y * target.y < 0) {
+    if (target && !target.axisName && projection.x * target.x + projection.y * target.y < 0) {
       const origin = this.coordSystem.mathToScreen(0, 0);
       ctx.save();
       ctx.strokeStyle = target.color;
@@ -288,15 +289,26 @@ class VectorCanvas {
     ctx.lineTo(to.x, to.y);
     ctx.stroke();
 
-    // Right-angle mark: unit vectors along the drop and back toward the origin
+    // Right-angle mark: unit vectors along the drop and along the target's line
+    // (back toward the origin, or along the target when the projection is at the origin)
     const origin = this.coordSystem.mathToScreen(0, 0);
     const alongLength = Math.hypot(origin.x - to.x, origin.y - to.y);
+    let along = null;
     if (alongLength >= 1) {
-      const size = Math.min(10, dropLength / 2, alongLength / 2);
+      along = { x: (origin.x - to.x) / alongLength, y: (origin.y - to.y) / alongLength, room: alongLength / 2 };
+    } else if (target) {
+      const tip = this.coordSystem.mathToScreen(target.x, target.y);
+      const targetLength = Math.hypot(tip.x - origin.x, tip.y - origin.y);
+      if (targetLength >= 1) {
+        along = { x: (tip.x - origin.x) / targetLength, y: (tip.y - origin.y) / targetLength, room: Infinity };
+      }
+    }
+    if (along) {
+      const size = Math.min(10, dropLength / 2, along.room);
       const ux = (from.x - to.x) / dropLength;
       const uy = (from.y - to.y) / dropLength;
-      const vx = (origin.x - to.x) / alongLength;
-      const vy = (origin.y - to.y) / alongLength;
+      const vx = along.x;
+      const vy = along.y;
       ctx.setLineDash([]);
       ctx.lineWidth = 1.5;
       ctx.beginPath();

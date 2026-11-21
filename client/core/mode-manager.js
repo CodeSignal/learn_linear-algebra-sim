@@ -192,6 +192,9 @@
           console.error(`Error destroying mode '${this.currentMode}':`, error);
         }
       }
+      // Drop the torn-down instance, so a failed switch below can't snapshot
+      // its emptied state over the saved one on the next switch
+      this.currentModeInstance = null;
 
       // Update UI visibility
       this.updateUIVisibility(modeName);

@@ -34,10 +34,27 @@ const COORD_FIELDS = {
   cartesian: [{ prefix: 'x', suffix: '' }, { prefix: 'y', suffix: '' }],
   polar: [{ prefix: 'r', suffix: '' }, { prefix: 'θ', suffix: '°' }]
 };
+
+// Reflection axis choices; config.json vectorMode.reflectionAxes picks a subset
+const REFLECTION_AXIS_ITEMS = [
+  { value: 'x-axis', label: 'X-axis' },
+  { value: 'y-axis', label: 'Y-axis' },
+  { value: 'diagonal', label: 'y = x' }
+];
+
+// Used when the sidebar runs without a VectorMode (every feature on)
+const DEFAULT_SIDEBAR_OPTIONS = {
+  coordinateMode: 'cartesian',
+  interactions: { draw: true, dragTips: true, typeCoordinates: true, add: true, remove: true },
+  reflectionAxes: ['x-axis', 'y-axis', 'diagonal'],
+  coefficients: [1, 1]
+};
 class VectorSidebar {
   constructor(rootElement, parentMode = null) {
     this.root = rootElement;
     this.parentMode = parentMode;
+    // Feature switches and starting values from config.json (see VectorMode.readOptions)
+    this.options = (parentMode && parentMode.options) || DEFAULT_SIDEBAR_OPTIONS;
 
     // Cache all DOM element references once
     this.elements = {
@@ -120,20 +137,17 @@ class VectorSidebar {
           { value: 'cartesian', label: 'Cartesian' },
           { value: 'polar', label: 'Polar' }
         ],
-        selectedValue: 'cartesian'
+        selectedValue: this.options.coordinateMode
       });
     }
 
     // Reflection axis dropdown
     const reflectTypeContainer = this.root.querySelector('#reflect-type-dropdown');
     if (reflectTypeContainer) {
+      const items = REFLECTION_AXIS_ITEMS.filter(item => this.options.reflectionAxes.includes(item.value));
       this.dropdowns.reflectType = new window.Dropdown(reflectTypeContainer, {
-        items: [
-          { value: 'x-axis', label: 'X-axis' },
-          { value: 'y-axis', label: 'Y-axis' },
-          { value: 'diagonal', label: 'y = x' }
-        ],
-        selectedValue: 'x-axis'
+        items,
+        selectedValue: items.length > 0 ? items[0].value : null
       });
     }
 
@@ -172,7 +186,7 @@ class VectorSidebar {
   initializeSliders() {
     if (!window.NumericSlider) return;
 
-    ['lcScalarA', 'lcScalarB'].forEach((key) => {
+    ['lcScalarA', 'lcScalarB'].forEach((key, index) => {
       const container = this.root.querySelector(key === 'lcScalarA' ? '#lc-scalar-a' : '#lc-scalar-b');
       if (!container) return;
       this.sliders[key] = new window.NumericSlider(container, {
@@ -180,7 +194,7 @@ class VectorSidebar {
         min: -9,
         max: 9,
         step: 0.1,
-        value: 1,
+        value: this.options.coefficients[index],
         showInputs: true,
         onChange: () => this.updateLinearComboButton()
       });
@@ -327,7 +341,15 @@ class VectorSidebar {
     if (!this.emptyMessage) {
       this.emptyMessage = document.createElement('p');
       this.emptyMessage.className = 'vector-list-empty body-xsmall';
-      this.emptyMessage.textContent = 'Click and drag on the grid to draw a vector, or press + Add to type one in.';
+      // Only mention the ways of adding a vector that config.json leaves on
+      const { draw, add } = this.options.interactions;
+      this.emptyMessage.textContent = draw && add
+        ? 'Click and drag on the grid to draw a vector, or press + Add to type one in.'
+        : draw
+          ? 'Click and drag on the grid to draw a vector.'
+          : add
+            ? 'Press + Add to type in a vector.'
+            : 'No vectors yet.';
     }
     return this.emptyMessage;
   }
@@ -383,16 +405,31 @@ class VectorSidebar {
 
     const fields = [this.createCoordField(), this.createCoordField()];
 
+    // config.json vectorMode.interactions.typeCoordinates: fields become read-only
+    if (!this.options.interactions.typeCoordinates) {
+      element.classList.add('is-readonly');
+      fields.forEach(field => {
+        field.input.readOnly = true;
+        field.input.tabIndex = -1;
+        field.wrapper.classList.add('is-readonly');
+      });
+    }
+
     const magnitude = document.createElement('span');
     magnitude.className = 'vector-row-magnitude';
 
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'button button-tertiary button-xsmall vector-remove';
-    remove.dataset.vectorId = String(vector.id);
-    remove.textContent = '×';
+    element.append(label, fields[0].wrapper, fields[1].wrapper, magnitude);
 
-    element.append(label, fields[0].wrapper, fields[1].wrapper, magnitude, remove);
+    // config.json vectorMode.interactions.remove: no × button
+    let remove = null;
+    if (this.options.interactions.remove) {
+      remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'button button-tertiary button-xsmall vector-remove';
+      remove.dataset.vectorId = String(vector.id);
+      remove.textContent = '×';
+      element.append(remove);
+    }
     return { element, label, fields, magnitude, remove, vector, coordinateMode: null, snapshot: null, exact: null };
   }
 
@@ -406,7 +443,7 @@ class VectorSidebar {
     const { vector } = row;
     row.label.textContent = vector.label;
     row.label.style.setProperty('--vector-color', vector.color);
-    row.remove.setAttribute('aria-label', `Remove ${vector.label}`);
+    if (row.remove) row.remove.setAttribute('aria-label', `Remove ${vector.label}`);
 
     if (row.coordinateMode !== coordinateMode) {
       this.labelCoordFields(row.fields, coordinateMode, vector.label);

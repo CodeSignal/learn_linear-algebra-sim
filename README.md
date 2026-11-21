@@ -30,20 +30,31 @@ The application supports three interaction modes:
 2. **Matrix Mode**: Visualize 2×2 matrix transformations and their effects on basis vectors
 3. **Tensor Mode**: Explore tensors of different ranks (0-3) in an interactive 3D space
 
-Modes can be enabled/disabled via the `enabledModes` array in `client/config.json`. The default mode is set via the `mode` property in the config file.
+Modes can be enabled/disabled via the `enabledModes` array in `client/config.json`. The default mode is set via the `defaultMode` property (see [Configuring a Practice](#configuring-a-practice-clientconfigjson)).
 
-### Configuring the Sidebar
+### Configuring a Practice (`client/config.json`)
 
-Every sidebar section can be shown or hidden from `client/config.json`, so a practice can expose only the tools it needs. Students cannot change this from the page: hidden sections are removed, not just styled away.
+Everything a learner can see or do can be turned on or off in `client/config.json`, and the simulation can open with set starting values. That lets each practice expose only what it needs. Learners can't change any of this from the page: hidden parts are removed, not just styled away.
 
-```json
-"vectorMode": {
-  "sections": {
-    "addition": { "shown": true },
-    "dotProduct": { "shown": false }
-  }
-}
-```
+Every switch defaults to **on** and every starting value to the app's usual default, so a config only has to list what it changes. Switches are `true`/`false` (the `{ "shown": false }` form also works). Unknown keys and bad values are ignored with a `config.json: ...` warning in the browser console, never an error.
+
+#### Modes
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `enabledModes` | `["vector", "matrix", "tensor"]` | Modes in the top switcher |
+| `defaultMode` | `"vector"` | Mode the page opens in (always enabled) |
+
+#### App-wide switches: `ui`
+
+| Key | Turns off |
+|-----|-----------|
+| `helpButton` | The Help button |
+| `resultsPanel` | The results panel (operations still draw on the canvas) |
+| `zoom` | Wheel / pinch zoom and the + / − buttons (also the scroll zoom in Tensor mode) |
+| `pan` | Dragging the view. With `zoom` and `pan` both off, the view is fixed and its controls disappear |
+
+#### Sidebar sections: `<mode>Mode.sections`
 
 | Mode | Section keys |
 |------|--------------|
@@ -51,11 +62,83 @@ Every sidebar section can be shown or hidden from `client/config.json`, so a pra
 | `matrixMode` | `reset`, `addition`, `scalarMultiplication`, `multiplication`, `linearTransformation`, `determinant` |
 | `tensorMode` | `reset`, `rank0`, `rank1`, `rank2`, `rank3`, `controlsHint` |
 
-- Sections left out of the config are shown. Misspelled keys are ignored with a warning in the browser console.
 - The "Operations" heading disappears when every operation in it is hidden.
 - Matrix mode's `includeVector` still applies: with a vector, the two-matrix operations stay hidden; without one, `linearTransformation` stays hidden.
-- In Tensor mode, the first visible rank is selected on load, and the rank selector disappears when only one rank is visible.
+- In Tensor mode, the rank selector disappears when only one rank is visible.
 - The older `operationGroups` booleans (e.g. `"dotProduct": false`) still work; `sections` takes precedence.
+
+#### Vector mode: `vectorMode`
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `maxVectors` | `12` | How many vectors can exist (1–12). With 1, two-vector operations are hidden |
+| `vectors` | none | Starting vectors v₁, v₂, …: each `[x, y]`, `{"x": .., "y": ..}` or `{"r": .., "theta": ..}` (degrees). Reset goes back to these |
+| `coordinateMode` | `"cartesian"` | `"cartesian"` or `"polar"` for the vector list |
+| `interactions.draw` | on | Drawing a new vector by dragging on the grid |
+| `interactions.dragTips` | on | Dragging a vector's tip to change it |
+| `interactions.typeCoordinates` | on | Typing into a vector's fields (off: values are shown read-only) |
+| `interactions.add` | on | The + Add button for typing in a new vector |
+| `interactions.remove` | on | The × button on each vector |
+| `operations.add`, `operations.subtract` | on | The two buttons in the Addition & Subtraction card |
+| `operations.project`, `operations.angle` | on | The two buttons in the Projection & Angle card |
+| `reflectionAxes` | all three | Which of `"x-axis"`, `"y-axis"`, `"diagonal"` (y = x) Reflection offers |
+| `results.polar` | on | The extra `polar: r = …, θ = …` line under vector results |
+| `scalar` | `2` | Starting value in the Scalar Multiplication box |
+| `coefficients` | `[1, 1]` | Starting Linear Combination coefficients (−9 to 9) |
+
+A card left with one button is titled after it (e.g. "Addition"); a card with no buttons, or Reflection with no axes, is hidden.
+
+#### Matrix mode: `matrixMode`
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `includeVector` | `false` | Show vector v (and Av) instead of matrix B |
+| `maxMatrices` | `2` | `1` hides matrix B |
+| `matrixA`, `matrixB` | identity | Starting values as rows, `[[a, b], [c, d]]` |
+| `vector` | `[1, 1]` | Starting vector v |
+| `scalar` | `2` | Starting value in the Scalar Multiplication box |
+| `editable.matrixA`, `editable.matrixB`, `editable.vector` | on | Typing into those boxes (off: shown read-only) |
+
+Reset goes back to the starting values.
+
+#### Tensor mode: `tensorMode`
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `values.scalar` | `1` | Rank 0 value |
+| `values.vector` | `[2, 1]` | Rank 1 components |
+| `values.matrix` | `[[1, 0], [0, 1]]` | Rank 2 rows |
+| `values.tensor3d` | `[[[1, 0], [0, 1]], [[0, 1], [1, 0]]]` | Rank 3: front slice, then back slice |
+| `defaultRank` | first shown rank | Rank selected on load |
+| `editable` | on | Typing into the value boxes |
+| `interactions.rotate` | on | Dragging to rotate the 3D view |
+
+#### Example: "add these two vectors" practice
+
+```json
+{
+  "enabledModes": ["vector"],
+  "ui": { "helpButton": false },
+  "vectorMode": {
+    "maxVectors": 2,
+    "vectors": [[3, 1], [1, 2]],
+    "interactions": { "draw": false, "dragTips": false, "typeCoordinates": false, "add": false, "remove": false },
+    "operations": { "subtract": false },
+    "results": { "polar": false },
+    "sections": {
+      "coordinateMode": { "shown": false },
+      "reset": { "shown": false },
+      "scalarMultiplication": { "shown": false },
+      "dotProduct": { "shown": false },
+      "projectionAngle": { "shown": false },
+      "normalization": { "shown": false },
+      "perpendicular": { "shown": false },
+      "reflection": { "shown": false },
+      "linearCombination": { "shown": false }
+    }
+  }
+}
+```
 
 ### User Interface
 - **Left Sidebar**: Control panel with mode-specific inputs; each operation is a collapsible card (the first one starts open, or all of them when a config leaves three or fewer)
@@ -74,7 +157,7 @@ Every sidebar section can be shown or hidden from `client/config.json`, so a pra
 
 2. **Choose a mode**:
    - Use the mode switcher buttons (if multiple modes are enabled)
-   - Default mode is set in `client/config.json` (`mode` property)
+   - Default mode is set in `client/config.json` (`defaultMode` property)
    - Available modes: Vector, Matrix, Tensor
 
 3. **Vector Mode**:

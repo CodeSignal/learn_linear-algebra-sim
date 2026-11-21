@@ -100,6 +100,18 @@
   border-color: var(--Colors-Alert-Error-Default);
 }
 
+/* config.json vectorMode.interactions.typeCoordinates: false */
+.bespoke .vector-row .coord-field.is-readonly,
+.bespoke .vector-row .coord-field.is-readonly:focus-within {
+  border-color: transparent;
+  box-shadow: none;
+  cursor: default;
+}
+
+.bespoke .vector-row .coord-field.is-readonly .coord-input {
+  cursor: default;
+}
+
 .coord-prefix {
   font-style: italic;
   color: var(--Colors-Text-Body-Light);

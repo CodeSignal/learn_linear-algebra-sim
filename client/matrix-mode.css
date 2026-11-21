@@ -149,6 +149,15 @@
   appearance: textfield;
 }
 
+/* Locked by config.json (matrixMode.editable / tensorMode.editable): shown, not typed */
+.bespoke input[type="number"].matrix-input.is-readonly,
+.bespoke input[type="number"].matrix-input.is-readonly:focus {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  cursor: default;
+}
+
 /* Hide number spinners; values are typed */
 .bespoke input[type="number"].matrix-input::-webkit-outer-spin-button,
 .bespoke input[type="number"].matrix-input::-webkit-inner-spin-button {

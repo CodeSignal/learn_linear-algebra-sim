@@ -60,14 +60,15 @@ class MatrixMode {
     this.dropdowns = {};
     this.initializeDropdowns();
 
-    // Matrix state
-    this.inputMatrixA = Matrix.identity(2); // Matrix A
-    this.inputMatrixB = Matrix.identity(2); // Matrix B
+    // Starting values and editing switches from config.json
+    this.readOptions();
 
-    // Vector state (for includeVector mode)
-    const matrixConfig = this.appConfig.matrixMode || {};
-    const includeVector = matrixConfig.includeVector || false;
-    this.inputVector = new Vector(1, 1, '#10b981', 'v'); // Default green color for vector
+    // Matrix and vector state, filled from the starting values
+    this.inputMatrixA = null;
+    this.inputMatrixB = null;
+    this.inputVector = null;
+    this.loadStartingValues();
+    this.applyEditable();
 
     // Basis vectors (î and ĵ) for matrix A
     this.basisVectors = {
@@ -109,6 +110,8 @@ class MatrixMode {
     // Matrix mode has no canvas drag of its own, so plain left drag pans too
     this.viewport = new ViewportController(this.coordSystem.canvas, this.coordSystem, {
       viewKey: 'matrix',
+      zoom: appConfig.ui?.zoom !== false,
+      pan: appConfig.ui?.pan !== false,
       panWithPrimaryButton: true,
       resetButton: document.getElementById('reset-view'),
       controls: document.getElementById('view-controls'),
@@ -117,10 +120,74 @@ class MatrixMode {
       onChange: () => this.render()
     });
     this.coordSystem.setResizeCallback(() => this.render());
+    // Nothing to grab when panning is off (config.json ui.pan)
+    this.coordSystem.canvas.style.cursor = appConfig.ui?.pan === false ? 'default' : '';
 
     this.setupEventListeners();
     this.applyMatrixVisibility();
     this.updateButtonStates(); // Initialize button states
+  }
+
+  /**
+   * Read matrixMode's starting values and editing switches from config.json:
+   * matrixA / matrixB as rows [[a, b], [c, d]], vector as [x, y],
+   * scalar for scalar multiplication, editable.{matrixA, matrixB, vector}
+   */
+  readOptions() {
+    const read = window.ConfigOptions;
+    const config = this.appConfig.matrixMode || {};
+    const identity = [[1, 0], [0, 1]];
+    const vector = config.vector === undefined ? null : read.readPoint(config.vector, 'matrixMode.vector');
+
+    this.options = Object.freeze({
+      matrixA: read.readMatrix2(config.matrixA, 'matrixMode.matrixA') || identity,
+      matrixB: read.readMatrix2(config.matrixB, 'matrixMode.matrixB') || identity,
+      vector: vector || { x: 1, y: 1 },
+      scalar: read.readNumber(config.scalar, 2, 'matrixMode.scalar'),
+      editable: read.readFlags(config.editable, ['matrixA', 'matrixB', 'vector'], 'matrixMode.editable')
+    });
+  }
+
+  /** Put the starting values into the state and the input boxes (on load and on Reset) */
+  loadStartingValues() {
+    const { matrixA, matrixB, vector, scalar } = this.options;
+    this.inputMatrixA = new Matrix(2, 2, matrixA.map(row => [...row]));
+    this.inputMatrixB = new Matrix(2, 2, matrixB.map(row => [...row]));
+    this.inputVector = new Vector(vector.x, vector.y, '#10b981', 'v');
+
+    const setValue = (element, value) => {
+      if (element) element.value = String(value);
+    };
+    setValue(this.elements.m00, matrixA[0][0]);
+    setValue(this.elements.m01, matrixA[0][1]);
+    setValue(this.elements.m10, matrixA[1][0]);
+    setValue(this.elements.m11, matrixA[1][1]);
+    setValue(this.elements.m00_b, matrixB[0][0]);
+    setValue(this.elements.m01_b, matrixB[0][1]);
+    setValue(this.elements.m10_b, matrixB[1][0]);
+    setValue(this.elements.m11_b, matrixB[1][1]);
+    setValue(this.elements.vectorVx, vector.x);
+    setValue(this.elements.vectorVy, vector.y);
+    setValue(this.elements.matrixScalarInput, scalar);
+  }
+
+  /** Lock the input boxes that config.json matrixMode.editable switches off */
+  applyEditable() {
+    const groups = {
+      matrixA: ['m00', 'm01', 'm10', 'm11'],
+      matrixB: ['m00_b', 'm01_b', 'm10_b', 'm11_b'],
+      vector: ['vectorVx', 'vectorVy']
+    };
+    Object.entries(groups).forEach(([key, names]) => {
+      const locked = !this.options.editable[key];
+      names.forEach(name => {
+        const input = this.elements[name];
+        if (!input) return;
+        input.readOnly = locked;
+        input.tabIndex = locked ? -1 : 0;
+        input.classList.toggle('is-readonly', locked);
+      });
+    });
   }
 
   /**
@@ -530,38 +597,20 @@ class MatrixMode {
 
   /**
    * Handle matrix reset button click
-   * Resets both matrices to identity and clears determinant visualization
-   * Also resets vector to (0, 0) if includeVector is true
+   * Restores the starting matrices and vector (identity and (1, 1) unless
+   * config.json sets them) and clears the determinant visualization
    */
   handleReset() {
     if (window.StatusService) {
       window.StatusService.setLoading();
     }
 
-    const matrixConfig = this.appConfig.matrixMode || {};
-    const includeVector = matrixConfig.includeVector || false;
-
-    this.inputMatrixA = Matrix.identity(2);
-    this.inputMatrixB = Matrix.identity(2);
-
-    // Update matrix A input fields
-    if (this.elements.m00) this.elements.m00.value = '1';
-    if (this.elements.m01) this.elements.m01.value = '0';
-    if (this.elements.m10) this.elements.m10.value = '0';
-    if (this.elements.m11) this.elements.m11.value = '1';
-
-    // Update matrix B input fields
-    if (this.elements.m00_b) this.elements.m00_b.value = '1';
-    if (this.elements.m01_b) this.elements.m01_b.value = '0';
-    if (this.elements.m10_b) this.elements.m10_b.value = '0';
-    if (this.elements.m11_b) this.elements.m11_b.value = '1';
-
-    // Reset vector if includeVector is true
-    if (includeVector) {
-      this.inputVector = new Vector(1, 1, '#10b981', 'v');
-      if (this.elements.vectorVx) this.elements.vectorVx.value = '1';
-      if (this.elements.vectorVy) this.elements.vectorVy.value = '1';
+    if (this.animationControl) {
+      this.animationControl.cancel();
+      this.animationControl = null;
+      this.isAnimating = false;
     }
+    this.loadStartingValues();
 
     this.showDeterminantArea = false;
     this.selectedDeterminantMatrix = 'A';
@@ -587,7 +636,7 @@ class MatrixMode {
     this.resultVector = null;
 
     // Log action
-    logAction('Matrices reset to identity');
+    logAction('Matrices reset to starting values');
 
     if (window.StatusService) {
       window.StatusService.setReady();

@@ -12,6 +12,24 @@ const SUBSCRIPT_DIGITS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇'
 // Sidebar sections that need two vectors to be meaningful
 const TWO_VECTOR_SECTIONS = ['addition', 'dotProduct', 'projectionAngle', 'linearCombination'];
 
+// config.json vectorMode.interactions: what the learner can do to the vectors
+const VECTOR_INTERACTIONS = ['draw', 'dragTips', 'typeCoordinates', 'add', 'remove'];
+
+// config.json vectorMode.operations: buttons that share a sidebar card.
+// A card whose buttons are all off is hidden.
+const VECTOR_OPERATION_BUTTONS = {
+  add: { selector: '#op-add', section: 'addition', title: 'Addition' },
+  subtract: { selector: '#op-subtract', section: 'addition', title: 'Subtraction' },
+  project: { selector: '#op-project', section: 'projectionAngle', title: 'Projection' },
+  angle: { selector: '#op-angle', section: 'projectionAngle', title: 'Angle' }
+};
+
+// config.json vectorMode.reflectionAxes values
+const REFLECTION_AXES = ['x-axis', 'y-axis', 'diagonal'];
+
+// Range of the linear combination coefficient sliders
+const COEFFICIENT_RANGE = { min: -9, max: 9 };
+
 class VectorMode {
   constructor(canvas, appConfig, styleConstants, coordSystem, rootElement, savedState = null) {
     this.canvas = canvas;
@@ -24,6 +42,12 @@ class VectorMode {
     const configuredMax = Number(appConfig.vectorMode?.maxVectors) || VECTOR_LIMIT;
     this.maxVectors = Math.min(VECTOR_LIMIT, Math.max(1, configuredMax));
 
+    // Feature switches and starting values from config.json (read by the sidebar too)
+    this.readOptions();
+
+    // Coordinate display mode: 'cartesian' or 'polar'
+    this.coordinateMode = this.options.coordinateMode;
+
     // Must run before VectorSidebar caches its elements
     this.applySidebarSections();
 
@@ -35,6 +59,8 @@ class VectorMode {
     // Pan (Space/right/middle drag) and zoom (wheel); left drag stays for drawing
     this.viewport = new ViewportController(canvas, coordSystem, {
       viewKey: 'vector',
+      zoom: appConfig.ui?.zoom !== false,
+      pan: appConfig.ui?.pan !== false,
       resetButton: document.getElementById('reset-view'),
       controls: document.getElementById('view-controls'),
       zoomInButton: document.getElementById('zoom-in'),
@@ -45,9 +71,6 @@ class VectorMode {
     // Vectors (sorted by id; id n is labelled vₙ)
     this.vectors = [];
     this.resultVector = null;
-
-    // Coordinate display mode
-    this.coordinateMode = 'cartesian'; // 'cartesian' or 'polar'
 
     // Interaction state
     this.isDrawing = false;
@@ -105,9 +128,101 @@ class VectorMode {
     // Initialize
     this.setupCanvasEventListeners();
     this.setupSidebarEventListeners();
-    if (savedState) this.restoreState(savedState);
+    if (savedState) {
+      this.restoreState(savedState);
+    } else {
+      this.loadPresetVectors();
+    }
+    this.canvas.style.cursor = this.idleCursor();
     this.updateUI(); // Initial UI update
     this.render();
+  }
+
+  /**
+   * Read vectorMode's feature switches and starting values from config.json.
+   * Every switch defaults to on and every value to the app's usual default.
+   */
+  readOptions() {
+    const read = window.ConfigOptions;
+    const config = this.appConfig.vectorMode || {};
+    const path = key => `vectorMode.${key}`;
+
+    // Starting vectors, in order v₁, v₂, ...; zero vectors and extras are dropped
+    let presets = [];
+    if (config.vectors !== undefined) {
+      if (Array.isArray(config.vectors)) {
+        presets = config.vectors
+          .map((value, index) => {
+            const point = read.readPoint(value, `${path('vectors')}[${index}]`);
+            if (point && point.x === 0 && point.y === 0) {
+              console.warn(`config.json: ${path('vectors')}[${index}] is the zero vector, which can't be drawn; it is skipped`);
+              return null;
+            }
+            return point;
+          })
+          .filter(Boolean);
+        if (presets.length > this.maxVectors) {
+          console.warn(`config.json: ${path('vectors')} lists ${presets.length} vectors but maxVectors is ${this.maxVectors}; extras are dropped`);
+          presets = presets.slice(0, this.maxVectors);
+        }
+      } else {
+        console.warn(`config.json: ${path('vectors')} must be a list of vectors`);
+      }
+    }
+
+    let reflectionAxes = REFLECTION_AXES;
+    if (config.reflectionAxes !== undefined) {
+      const listed = Array.isArray(config.reflectionAxes) ? config.reflectionAxes : [];
+      const unknown = listed.filter(axis => !REFLECTION_AXES.includes(axis));
+      if (!Array.isArray(config.reflectionAxes) || unknown.length > 0) {
+        console.warn(`config.json: ${path('reflectionAxes')} must list some of ${REFLECTION_AXES.map(a => `"${a}"`).join(', ')}`);
+      }
+      reflectionAxes = REFLECTION_AXES.filter(axis => listed.includes(axis));
+    }
+
+    const coefficient = (value, index) => {
+      const number = read.readNumber(value, 1, `${path('coefficients')}[${index}]`);
+      const clamped = Math.min(COEFFICIENT_RANGE.max, Math.max(COEFFICIENT_RANGE.min, number));
+      if (clamped !== number) {
+        console.warn(`config.json: ${path('coefficients')}[${index}] must be between ${COEFFICIENT_RANGE.min} and ${COEFFICIENT_RANGE.max}`);
+      }
+      return clamped;
+    };
+    let coefficients = [1, 1];
+    if (config.coefficients !== undefined) {
+      if (Array.isArray(config.coefficients) && config.coefficients.length === 2) {
+        coefficients = config.coefficients.map(coefficient);
+      } else {
+        console.warn(`config.json: ${path('coefficients')} must be [a, b]`);
+      }
+    }
+
+    this.options = Object.freeze({
+      coordinateMode: read.readChoice(config.coordinateMode, ['cartesian', 'polar'], 'cartesian', path('coordinateMode')),
+      presets,
+      interactions: read.readFlags(config.interactions, VECTOR_INTERACTIONS, path('interactions')),
+      operations: read.readFlags(config.operations, Object.keys(VECTOR_OPERATION_BUTTONS), path('operations')),
+      reflectionAxes,
+      polarResults: read.readFlag(config.results?.polar, true, `${path('results')}.polar`),
+      scalar: read.readNumber(config.scalar, 2, path('scalar')),
+      coefficients
+    });
+    this.interactions = this.options.interactions;
+  }
+
+  /** Replace the vectors with the configured starting vectors (none by default) */
+  loadPresetVectors() {
+    this.vectors = this.options.presets.map(({ x, y }, index) => {
+      const vector = this.createVector(index + 1);
+      vector.x = x;
+      vector.y = y;
+      return vector;
+    });
+  }
+
+  /** Cursor over empty canvas: crosshair only when the learner can draw there */
+  idleCursor() {
+    return this.interactions.draw ? 'crosshair' : 'default';
   }
 
   /**
@@ -121,6 +236,38 @@ class VectorMode {
     if (this.maxVectors < 2) {
       TWO_VECTOR_SECTIONS.forEach(key => { sections[key] = false; });
     }
+
+    // Buttons switched off in vectorMode.operations; a card left without buttons goes too
+    const { operations, reflectionAxes, interactions } = this.options;
+    Object.entries(VECTOR_OPERATION_BUTTONS).forEach(([key, { selector }]) => {
+      if (!operations[key]) {
+        const button = this.root.querySelector(selector);
+        if (button) button.remove();
+      }
+    });
+    new Set(Object.values(VECTOR_OPERATION_BUTTONS).map(b => b.section)).forEach(section => {
+      const buttonKeys = Object.keys(VECTOR_OPERATION_BUTTONS).filter(key => VECTOR_OPERATION_BUTTONS[key].section === section);
+      const remaining = buttonKeys.filter(key => operations[key]);
+      if (remaining.length === 0) {
+        sections[section] = false;
+      } else if (remaining.length === 1) {
+        // The card's title names only the operation that is left
+        const title = this.root.querySelector(`[data-section="${section}"] .operation-label`);
+        if (title) title.textContent = VECTOR_OPERATION_BUTTONS[remaining[0]].title;
+      }
+    });
+    if (reflectionAxes.length === 0) sections.reflection = false;
+
+    // + Add (type a new vector) switched off in vectorMode.interactions
+    if (!interactions.add) {
+      const addButton = this.root.querySelector('#vector-add');
+      if (addButton) addButton.remove();
+    }
+
+    // Starting values for the scalar box (the sliders read theirs in VectorSidebar)
+    const scalarInput = this.root.querySelector('#scalar-input');
+    if (scalarInput) scalarInput.value = String(this.options.scalar);
+
     window.SidebarSections.applySections(this.root, sections);
     window.SidebarSections.openInitialGroups(this.root);
   }
@@ -345,8 +492,9 @@ class VectorMode {
     return this.canvasRenderer.snapToGrid(value);
   }
 
-  // Check if mouse is near vector endpoint (for editing)
+  // Check if mouse is near vector endpoint (for editing); null when tips can't be dragged
   checkEndpointHit(mouseScreenX, mouseScreenY) {
+    if (!this.interactions.dragTips) return null;
     return this.canvasRenderer.checkEndpointHit(mouseScreenX, mouseScreenY, this.vectors);
   }
 
@@ -410,6 +558,7 @@ class VectorMode {
       return;
     }
 
+    if (!this.interactions.draw) return;
     const id = this.nextVectorId();
     if (id === null) return;
 
@@ -456,7 +605,7 @@ class VectorMode {
     const hitVector = this.checkEndpointHit(pos.x, pos.y);
     if (hitVector !== this.hoveredVector) {
       this.hoveredVector = hitVector;
-      this.canvas.style.cursor = hitVector ? 'pointer' : 'crosshair';
+      this.canvas.style.cursor = hitVector ? 'pointer' : this.idleCursor();
       this.render();
     }
   }
@@ -477,7 +626,7 @@ class VectorMode {
       const pos = this.getMousePos(e);
       const hitVector = this.checkEndpointHit(pos.x, pos.y);
       this.hoveredVector = hitVector;
-      this.canvas.style.cursor = hitVector ? 'pointer' : 'crosshair';
+      this.canvas.style.cursor = hitVector ? 'pointer' : this.idleCursor();
 
       this.updateUI(); // Update UI after editing
       this.render();
@@ -514,7 +663,7 @@ class VectorMode {
 
     // Clear hover state when leaving canvas
     this.hoveredVector = null;
-    this.canvas.style.cursor = 'crosshair';
+    this.canvas.style.cursor = this.idleCursor();
   }
 
   // ============================================================================
@@ -547,26 +696,29 @@ class VectorMode {
     return vector;
   }
 
+  /** Reset: back to the configured starting vectors (an empty canvas by default) */
   clearAll() {
     this.cancelAnimations();
-    this.vectors = [];
+    this.loadPresetVectors();
     this.hoveredVector = null;
     this.clearVisualizations();
     this.sidebar.clearResults(); // Clear results panel
     this.updateUI(); // Update UI after clearing
     this.render();
-    // Log canvas clear
-    logAction('Canvas cleared');
+    logAction(this.options.presets.length > 0 ? 'Canvas reset to starting vectors' : 'Canvas cleared');
   }
 
   /**
    * Show an operation's result lines; a result vector also gets its polar form,
    * so it can be typed into a vector row in either coordinate system
+   * (unless config.json vectorMode.results.polar is off)
    * @param {Object} opResult - Result from VectorOperations
    */
   displayResultLines(opResult) {
     const lines = [...opResult.resultLines];
-    if (opResult.resultVector) lines.push(this.operations.formatPolar(opResult.resultVector));
+    if (opResult.resultVector && this.options.polarResults) {
+      lines.push(this.operations.formatPolar(opResult.resultVector));
+    }
     this.sidebar.displayResult(...lines);
   }
 

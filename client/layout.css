@@ -290,6 +290,11 @@ body.bespoke {
   flex-direction: column;
 }
 
+/* config.json "ui": { "resultsPanel": false } */
+.results-panel-off .results-overlay {
+  display: none !important;
+}
+
 /* Position Variants */
 .results-overlay.pos-top-left { top: 16px; left: 16px; }
 .results-overlay.pos-top-right { top: 16px; right: 16px; }
@@ -467,6 +472,12 @@ body.bespoke {
 }
 
 .bespoke .view-reset[hidden] {
+  display: none;
+}
+
+/* config.json "ui": { "zoom": false } hides the + / − buttons */
+.view-zoom[hidden],
+.bespoke #btn-help[hidden] {
   display: none;
 }
 

@@ -27,6 +27,10 @@ class TensorCanvas3D {
         this.zoom = 80; // Scale factor
         this.center = { x: 0, y: 0, z: 0 }; // Look at point
 
+        // config.json switches: tensorMode.interactions.rotate and ui.zoom
+        this.rotateEnabled = true;
+        this.zoomEnabled = true;
+
         // Interaction state
         this.isDragging = false;
         this.lastMouse = { x: 0, y: 0 };
@@ -76,6 +80,7 @@ class TensorCanvas3D {
     }
 
     handleMouseDown(e) {
+        if (!this.rotateEnabled) return;
         this.isDragging = true;
         this.lastMouse = { x: e.clientX, y: e.clientY };
     }
@@ -104,6 +109,7 @@ class TensorCanvas3D {
     }
 
     handleWheel(e) {
+        if (!this.zoomEnabled) return;
         e.preventDefault();
         this.zoom -= e.deltaY * 0.1; // scroll up zooms in, as on the 2D canvas
         this.zoom = Math.max(10, Math.min(200, this.zoom));

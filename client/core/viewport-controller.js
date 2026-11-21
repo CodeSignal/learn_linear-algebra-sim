@@ -9,6 +9,9 @@
  *
  * Pan gestures are handled in the window capture phase and stopped there, so
  * the mode's own canvas mouse handlers never see them.
+ *
+ * config.json "ui": { "zoom": false } or { "pan": false } turns either off;
+ * with both off the view stays fixed and its controls are hidden.
  */
 
 const ZOOM_LOG_DELAY_MS = 500;
@@ -26,6 +29,8 @@ class ViewportController {
    * @param {HTMLElement} [options.controls] - Container shown while this controller is active
    * @param {HTMLElement} [options.zoomInButton] - Button that zooms in around the canvas center
    * @param {HTMLElement} [options.zoomOutButton] - Button that zooms out around the canvas center
+   * @param {boolean} [options.zoom=true] - Allow zooming (wheel, pinch and the + / − buttons)
+   * @param {boolean} [options.pan=true] - Allow panning
    */
   constructor(canvas, coordSystem, options = {}) {
     this.canvas = canvas;
@@ -36,6 +41,8 @@ class ViewportController {
     this.controls = options.controls || null;
     this.zoomInButton = options.zoomInButton || null;
     this.zoomOutButton = options.zoomOutButton || null;
+    this.zoomEnabled = options.zoom !== false;
+    this.panEnabled = options.pan !== false;
     this.speeds = coordSystem.styleConstants.viewport;
 
     this.isPanning = false;
@@ -48,11 +55,17 @@ class ViewportController {
     this.listeners = [];
 
     coordSystem.activateView(options.viewKey);
+    // A view that can't move starts (and stays) at the default
+    if (!this.zoomEnabled && !this.panEnabled) coordSystem.resetView();
     this.bindEvents();
     this.updateCursor();
     this.updateResetButton();
     if (this.controls) {
-      this.controls.hidden = false;
+      this.controls.hidden = !this.zoomEnabled && !this.panEnabled;
+    }
+    this.zoomGroup = this.zoomInButton ? this.zoomInButton.closest('.view-zoom') : null;
+    if (this.zoomGroup) {
+      this.zoomGroup.hidden = !this.zoomEnabled;
     }
   }
 
@@ -96,7 +109,7 @@ class ViewportController {
   // ============================================================================
 
   shouldStartPan(e) {
-    if (e.target !== this.canvas) return false;
+    if (!this.panEnabled || e.target !== this.canvas) return false;
     // Ignore extra buttons pressed during a left-button drag (e.g. drawing a vector)
     if ((e.buttons & 1) && e.button !== 0) return false;
     if (e.button === 1 || e.button === 2) return true;
@@ -140,7 +153,7 @@ class ViewportController {
 
     if (isDown) {
       // Only claim Space while the pointer is over the canvas and the user isn't typing
-      if (!this.isPointerOver || this.isTypingTarget(e.target)) return;
+      if (!this.panEnabled || !this.isPointerOver || this.isTypingTarget(e.target)) return;
       e.preventDefault(); // Stops page scroll and activation of a focused button
       this.isSpaceDown = true;
     } else {
@@ -170,6 +183,7 @@ class ViewportController {
   // ============================================================================
 
   handleWheel(e) {
+    if (!this.zoomEnabled) return;
     e.preventDefault();
 
     // Normalize line/page deltas to pixels
@@ -193,6 +207,7 @@ class ViewportController {
    * @param {number} factor - Scale multiplier (>1 zooms in)
    */
   zoomByStep(factor) {
+    if (!this.zoomEnabled) return;
     this.coordSystem.zoomAt(this.coordSystem.width / 2, this.coordSystem.height / 2, factor);
     this.requestRender();
     logAction(`View zoomed: ${this.coordSystem.getScale().toFixed(0)} px per unit`);
@@ -224,7 +239,7 @@ class ViewportController {
   }
 
   updateCursor() {
-    const panReady = this.panWithPrimaryButton || (this.isSpaceDown && this.isPointerOver);
+    const panReady = this.panEnabled && (this.panWithPrimaryButton || (this.isSpaceDown && this.isPointerOver));
     this.canvas.classList.toggle('pan-ready', panReady && !this.isPanning);
     this.canvas.classList.toggle('panning', this.isPanning);
   }
@@ -247,6 +262,9 @@ class ViewportController {
     }
     if (this.controls) {
       this.controls.hidden = true;
+    }
+    if (this.zoomGroup) {
+      this.zoomGroup.hidden = false;
     }
     this.onChange = null;
   }

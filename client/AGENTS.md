@@ -82,6 +82,11 @@ before editing any asset under `client/`, then consult the sub-AGENTS inside
 - Every configurable sidebar block carries `data-section="<key>"`; wrappers
   that should disappear once empty carry `data-section-container`. New sidebar
   sections must add their key to `SIDEBAR_SECTIONS` and to `config.json`.
+- Every learner-facing feature must be switchable from `config.json`, defaulting
+  to on (see the README's config reference). App-wide switches live in `ui`
+  (resolved in `linear-algebra.js`); per-mode switches and starting values are
+  read in each mode's `readOptions()` with `window.ConfigOptions`. New features
+  get a switch and a README entry in the same change.
 - Log every user-triggered operation (`VectorOperations`, `MatrixMode`
   transforms, config changes) via `logAction`.
 - LocalStorage, fetch, and WebSocket code must be wrapped in try/catch with

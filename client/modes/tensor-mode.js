@@ -16,17 +16,12 @@ class TensorMode {
     this.sections = appConfig.tensorMode?.sections || {};
     this.availableRanks = this.resolveAvailableRanks();
 
+    // Starting values, starting rank and switches from config.json
+    this.readOptions();
+
     // State
-    this.rank = this.availableRanks[0];
-    this.tensorData = {
-      scalar: 1.0,
-      vector: { x: 2, y: 1 },
-      matrix: [[1, 0], [0, 1]],
-      tensor3d: [
-        [[1, 0], [0, 1]],
-        [[0, 1], [1, 0]]
-      ]
-    };
+    this.rank = this.options.defaultRank;
+    this.tensorData = this.startingData();
 
     // Colors
     this.colors = {};
@@ -56,6 +51,9 @@ class TensorMode {
     this.tensorCanvas3D = new TensorCanvas3D(canvas, {
       onRender: () => this.render()
     }, this.colors, styleConstants);
+    this.tensorCanvas3D.rotateEnabled = this.options.rotate;
+    this.tensorCanvas3D.zoomEnabled = this.options.zoom;
+    canvas.style.cursor = this.options.rotate ? '' : 'default';
 
     // Setup UI
     this.setupUI();
@@ -82,6 +80,72 @@ class TensorMode {
     if (this.tensorCanvas3D) {
       this.tensorCanvas3D.setColors(this.colors);
     }
+  }
+
+  /**
+   * Read tensorMode's options from config.json:
+   * values.{scalar, vector, matrix, tensor3d}, defaultRank, editable,
+   * interactions.rotate; zooming follows ui.zoom
+   */
+  readOptions() {
+    const read = window.ConfigOptions;
+    const config = this.appConfig.tensorMode || {};
+    const values = config.values || {};
+    const defaults = TensorMode.DEFAULT_DATA;
+
+    const vector = values.vector === undefined ? null : read.readPoint(values.vector, 'tensorMode.values.vector');
+    const isCube = value => Array.isArray(value) && value.length === 2 && value.every(slice =>
+      Array.isArray(slice) && slice.length === 2 && slice.every(row =>
+        Array.isArray(row) && row.length === 2 && row.every(cell => typeof cell === 'number' && Number.isFinite(cell))));
+    let tensor3d = defaults.tensor3d;
+    if (values.tensor3d !== undefined) {
+      if (isCube(values.tensor3d)) {
+        tensor3d = values.tensor3d;
+      } else {
+        console.warn('config.json: tensorMode.values.tensor3d must be two 2×2 slices: [[[a, b], [c, d]], [[e, f], [g, h]]]');
+      }
+    }
+
+    let defaultRank = this.availableRanks[0];
+    if (config.defaultRank !== undefined) {
+      if (this.availableRanks.includes(config.defaultRank)) {
+        defaultRank = config.defaultRank;
+      } else {
+        console.warn(`config.json: tensorMode.defaultRank must be one of the shown ranks (${this.availableRanks.join(', ')})`);
+      }
+    }
+
+    this.options = Object.freeze({
+      values: {
+        scalar: read.readNumber(values.scalar, defaults.scalar, 'tensorMode.values.scalar'),
+        vector: vector || defaults.vector,
+        matrix: read.readMatrix2(values.matrix, 'tensorMode.values.matrix') || defaults.matrix,
+        tensor3d
+      },
+      defaultRank,
+      editable: read.readFlag(config.editable, true, 'tensorMode.editable'),
+      rotate: read.readFlags(config.interactions, ['rotate'], 'tensorMode.interactions').rotate,
+      zoom: this.appConfig.ui?.zoom !== false
+    });
+  }
+
+  /** A fresh copy of the starting values (on load and on Reset) */
+  startingData() {
+    const { values } = this.options;
+    return {
+      scalar: values.scalar,
+      vector: { x: values.vector.x, y: values.vector.y },
+      matrix: values.matrix.map(row => [...row]),
+      tensor3d: values.tensor3d.map(slice => slice.map(row => [...row]))
+    };
+  }
+
+  /** Hint under the sidebar, listing only the gestures that are on */
+  controlsHintText() {
+    const parts = [];
+    if (this.options.rotate) parts.push('Drag to rotate');
+    if (this.options.zoom) parts.push('Scroll to zoom');
+    return parts.join(' · ');
   }
 
   /**
@@ -129,9 +193,9 @@ class TensorMode {
         </div>
       </div>
 
-      <div class="sidebar-section" data-section="controlsHint">
-        <p class="tensor-hint">Drag to rotate · Scroll to zoom</p>
-      </div>
+      ${this.controlsHintText() ? `<div class="sidebar-section" data-section="controlsHint">
+        <p class="tensor-hint">${this.controlsHintText()}</p>
+      </div>` : ''}
     `;
 
     if (window.SidebarSections) {
@@ -224,6 +288,15 @@ class TensorMode {
 
     container.innerHTML = html;
 
+    // config.json tensorMode.editable: false shows the values without letting them change
+    if (!this.options.editable) {
+      container.querySelectorAll('input').forEach(input => {
+        input.readOnly = true;
+        input.tabIndex = -1;
+        input.classList.add('is-readonly');
+      });
+    }
+
     // Re-attach listeners for new inputs
     this.attachInputListeners();
   }
@@ -266,24 +339,17 @@ class TensorMode {
 
     // Reset button - create bound handler
     this.handleReset = () => {
-      this.tensorData = {
-        scalar: 1.0,
-        vector: { x: 2, y: 1 },
-        matrix: [[1, 0], [0, 1]],
-        tensor3d: [
-          [[1, 0], [0, 1]],
-          [[0, 1], [1, 0]]
-        ]
-      };
+      this.tensorData = this.startingData();
 
       // Reset camera to default view
       if (this.tensorCanvas3D) {
         this.tensorCanvas3D.resetCamera();
       }
 
-      // Log reset with default values
+      // Log reset with the starting values
       try {
-        logAction('Tensor reset: scalar=1.0, vector=(2.0, 1.0), matrix=[[1,0],[0,1]], tensor3d=[[[1,0],[0,1]],[[0,1],[1,0]]]');
+        const d = this.tensorData;
+        logAction(`Tensor reset: scalar=${d.scalar}, vector=(${d.vector.x}, ${d.vector.y}), matrix=${JSON.stringify(d.matrix)}, tensor3d=${JSON.stringify(d.tensor3d)}`);
       } catch (err) {
         console.error('Failed to log reset:', err);
       }
@@ -631,6 +697,8 @@ class TensorMode {
   }
 
   destroy() {
+    this.canvas.style.cursor = '';
+
     // Remove all event listeners
     if (this.eventListeners) {
       this.eventListeners.forEach(({ element, event, handler }) => {
@@ -667,3 +735,13 @@ class TensorMode {
   }
 }
 
+// App defaults, used for any tensorMode.values entry config.json leaves out
+TensorMode.DEFAULT_DATA = Object.freeze({
+  scalar: 1.0,
+  vector: Object.freeze({ x: 2, y: 1 }),
+  matrix: [[1, 0], [0, 1]],
+  tensor3d: [
+    [[1, 0], [0, 1]],
+    [[0, 1], [1, 0]]
+  ]
+});

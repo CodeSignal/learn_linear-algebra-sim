@@ -218,6 +218,16 @@ class VectorOperations {
   angleBetween(vectorA, vectorB) {
     if (!vectorA || !vectorB) return null;
 
+    const zero = [vectorA, vectorB].find(v => v.magnitude() === 0);
+    if (zero) {
+      return {
+        resultVector: null,
+        clearParallelogram: true,
+        clearAngleArc: true,
+        resultLines: [`θ(${vectorA.label}, ${vectorB.label}) is undefined`, `${zero.label} is the zero vector, so it has no direction`]
+      };
+    }
+
     const angleRad = vectorA.angleBetween(vectorB);
     const angleDeg = vectorA.angleBetweenDegrees(vectorB);
 
@@ -255,6 +265,14 @@ class VectorOperations {
     if (!vector) return null;
 
     const unitLabel = `û${vector.subscript}`;
+    if (vector.magnitude() === 0) {
+      return {
+        resultVector: null,
+        clearParallelogram: true,
+        clearAngleArc: true,
+        resultLines: [`${unitLabel} is undefined`, `${vector.label} is the zero vector, so it has no direction`]
+      };
+    }
     const result = vector.normalize();
     result.label = unitLabel;
     result.color = this.styleConstants.colors.result;
@@ -359,8 +377,14 @@ class VectorOperations {
   linearCombination(vectorA, vectorB, scalarA, scalarB) {
     if (!vectorA || !vectorB || isNaN(scalarA) || isNaN(scalarB)) return null;
 
-    const termA = `${scalarA}${vectorA.label}`;
-    const termB = `${scalarB}${vectorB.label}`;
+    // A coefficient of 1 is implied and a negative one becomes a minus sign,
+    // matching the sidebar preview (e.g. "0.5v₁ − v₂")
+    const coefficient = (c) => (c === 1 ? '' : c === -1 ? '−' : String(c).replace('-', '−'));
+    const termA = `${coefficient(scalarA)}${vectorA.label}`;
+    const termB = `${coefficient(scalarB)}${vectorB.label}`;
+    const joinB = scalarB < 0 ? ' − ' : ' + ';
+    const coefB = coefficient(Math.abs(scalarB));
+    const combination = `${termA}${joinB}${coefB}${vectorB.label}`;
 
     const scaledA = vectorA.scale(scalarA);
     scaledA.label = termA;
@@ -374,13 +398,13 @@ class VectorOperations {
       scaledA.x + scaledB.x,
       scaledA.y + scaledB.y,
       this.styleConstants.colors.result,
-      `${termA} + ${termB}`
+      combination
     );
 
     logAction(`Linear combination: ${scalarA}${vectorA.name} + ${scalarB}${vectorB.name}. Result: (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`);
 
-    const formula = `${termA} + ${termB}`;
-    const calculation = `= ${scalarA}${this.format(vectorA)} + ${scalarB}${this.format(vectorB)}`;
+    const formula = combination;
+    const calculation = `= ${coefficient(scalarA)}${this.format(vectorA)}${joinB}${coefB}${this.format(vectorB)}`;
     const resultText = `= ${this.format(result, 2)}`;
 
     return {

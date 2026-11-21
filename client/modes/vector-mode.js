@@ -271,7 +271,7 @@ class VectorMode {
     vector.y = y;
     this.vectors = [...this.vectors, vector].sort((a, b) => a.id - b.id);
 
-    this.clearVisualizations();
+    this.invalidateResults();
     this.updateUI();
     this.render();
     logAction(`Vector created from input: ${vector.name} at (${x.toFixed(2)}, ${y.toFixed(2)}), magnitude: ${vector.magnitude().toFixed(2)}, angle: ${vector.angleDegrees().toFixed(2)}°`);
@@ -292,7 +292,7 @@ class VectorMode {
     vector.y = y;
 
     // Results no longer match the edited vector
-    this.clearVisualizations();
+    this.invalidateResults();
     this.updateUI();
     this.render();
   }
@@ -310,8 +310,7 @@ class VectorMode {
     this.cancelAnimations();
     this.vectors = this.vectors.filter(v => v !== vector);
     if (this.hoveredVector === vector) this.hoveredVector = null;
-    this.clearVisualizations();
-    this.sidebar.clearResults();
+    this.invalidateResults();
     this.updateUI();
     this.render();
     logAction(`Vector removed: ${vector.name}`);
@@ -322,6 +321,12 @@ class VectorMode {
     this.parallelogramState = null;
     this.angleArcState = null;
     this.projectionState = null;
+  }
+
+  /** Drop the drawn result and its text, e.g. after the vectors change */
+  invalidateResults() {
+    this.clearVisualizations();
+    this.sidebar.clearResults();
   }
 
   // ============================================================================
@@ -428,7 +433,7 @@ class VectorMode {
       this.editTarget.y = this.snapToGrid(mathPos.y);
 
       // Results no longer match the edited vector
-      this.clearVisualizations();
+      this.invalidateResults();
       this.updateUI(); // Update UI when vector changes
       this.render();
       return;
@@ -494,7 +499,7 @@ class VectorMode {
       const angle = vector.angleDegrees().toFixed(2);
       logAction(`Vector created: ${vector.name} at (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
 
-      this.clearVisualizations();
+      this.invalidateResults();
       this.updateUI(); // Update UI when vector is created
     }
 
@@ -627,7 +632,13 @@ class VectorMode {
 
   performScale() {
     const scalar = this.sidebar.getScalarInput();
-    if (isNaN(scalar)) return;
+    if (isNaN(scalar)) {
+      this.cancelAnimations();
+      this.clearVisualizations();
+      this.render();
+      this.sidebar.displayResult('Enter a number to scale by');
+      return;
+    }
     this.showResult(this.operations.scale(this.getOperand('scale'), scalar));
   }
 

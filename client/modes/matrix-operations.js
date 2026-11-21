@@ -139,7 +139,7 @@ class MatrixOperations {
       const intermediateHtml = window.FormatUtils.formatIntermediateFormulaAsColumn(a, b, c, d, vector.x, vector.y, 0);
       const resultColumnHtml = window.FormatUtils.formatVectorAsColumn(resultVector, 0);
 
-      formula = `Ax = ${matrixHtml} × ${vectorColumnHtml}`;
+      formula = `Av = ${matrixHtml} × ${vectorColumnHtml}`;
       intermediate = `= ${intermediateHtml}`;
       resultText = `= ${resultColumnHtml}`;
     } else {
@@ -161,7 +161,7 @@ class MatrixOperations {
       const topFormula = `${aInt}·${xInt} + ${bInt}·${yInt}`;
       const bottomFormula = `${cInt}·${xInt} + ${dInt}·${yInt}`;
 
-      formula = `Ax = ${matrix.toCompactString()} × [${xInt}, ${yInt}]`;
+      formula = `Av = ${matrix.toCompactString()} × [${xInt}, ${yInt}]`;
       intermediate = `= [${topFormula}, ${bottomFormula}]`;
       resultText = `= [${Math.round(resultVector.x)}, ${Math.round(resultVector.y)}]`;
     }

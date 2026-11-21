@@ -728,7 +728,7 @@ class MatrixMode {
 
     if (result && result.resultVector) {
       // Set label and color for result vector
-      result.resultVector.label = 'Ax';
+      result.resultVector.label = 'Av';
       result.resultVector.color = this.styleConstants.colors.result;
 
       // Animate from input vector to transformed vector
@@ -1192,7 +1192,14 @@ class MatrixMode {
     const centerX = (origin.x + corner1.x + corner2.x + corner3.x) / 4;
     const centerY = (origin.y + corner1.y + corner2.y + corner3.y) / 4;
 
-    ctx.fillText(`det(${matrixLabel}) = ${Math.abs(det).toFixed(2)}`, centerX, centerY);
+    const label = `det(${matrixLabel}) = ${det.toFixed(2)}`;
+    if (this.colors && this.colors.background) {
+      ctx.strokeStyle = this.colors.background;
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(label, centerX, centerY);
+    }
+    ctx.fillText(label, centerX, centerY);
 
     ctx.restore();
   }

@@ -275,7 +275,7 @@ body.bespoke {
 .results-overlay {
   position: absolute;
   width: 300px;
-  max-height: 200px;
+  max-height: min(320px, calc(100% - 32px));
   height: auto;
   background: var(--Colors-Backgrounds-Main-Default);
   border: 1px solid var(--la-border);
@@ -343,6 +343,7 @@ body.bespoke {
   font-size: var(--Fonts-Body-Default-xs);
   overflow-y: auto;
   flex: 1;
+  min-height: 0; /* lets the content scroll instead of being clipped */
 }
 
 /* Collapsed State (Circular Badge) */

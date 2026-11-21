@@ -199,6 +199,20 @@ class CoordinateSystem {
    */
   clear() {
     this.ctx.clearRect(0, 0, this.width, this.height);
+    this.labelBoxes = [];
+    this.labelSegments = [];
+  }
+
+  /**
+   * Register vectors drawn this frame so labels can steer clear of their
+   * lines, including vectors drawn after the label. Call after clear().
+   * @param {Array<{vector: {x: number, y: number}, start?: {x: number, y: number}}>} items
+   */
+  setLabelObstacles(items) {
+    this.labelSegments = items.filter(item => item && item.vector).map(({ vector, start = { x: 0, y: 0 } }) => ({
+      a: this.mathToScreen(start.x, start.y),
+      b: this.mathToScreen(start.x + vector.x, start.y + vector.y)
+    }));
   }
 
   /**
@@ -374,6 +388,86 @@ class CoordinateSystem {
   }
 
   /**
+   * Pick a label position near the vector tip that avoids vector lines and
+   * labels already drawn this frame. The default spot from
+   * computeLabelPosition wins whenever it is free.
+   * @param {Vector} vector - Vector being labelled
+   * @param {number} width - Label width in px (including any subscript)
+   * @returns {{x: number, y: number}} Label centre
+   */
+  placeLabel(vector, width) {
+    const HALF_HEIGHT = 9;
+    const SUBSCRIPT_DROP = 4; // subscript sits 5px below the base text
+    const PAD = 3;
+    const end = this.mathToScreen(vector.x, vector.y);
+    const origin = this.mathToScreen(0, 0);
+    const boxAt = (x, y) => ({
+      x0: x - width / 2 - PAD,
+      y0: y - HALF_HEIGHT - PAD,
+      x1: x + width / 2 + PAD,
+      y1: y + HALF_HEIGHT + SUBSCRIPT_DROP + PAD
+    });
+
+    const candidates = [this.computeLabelPosition(vector)];
+    // Rings of spots around the tip, starting perpendicular to the vector
+    const dirAngle = Math.atan2(end.y - origin.y, end.x - origin.x);
+    [18, 30, 46].forEach(radius => {
+      for (let k = 0; k < 12; k++) {
+        const a = dirAngle - Math.PI / 2 + (k * Math.PI) / 6;
+        candidates.push({
+          x: end.x + Math.cos(a) * (radius + width / 2),
+          y: end.y + Math.sin(a) * (radius + HALF_HEIGHT)
+        });
+      }
+    });
+
+    const segments = this.labelSegments || [];
+    const boxes = this.labelBoxes || [];
+    let best = candidates[0];
+    let bestScore = Infinity;
+    candidates.forEach((pos, index) => {
+      const box = boxAt(pos.x, pos.y);
+      let score = index === 0 ? 0 : 1 + Math.hypot(pos.x - candidates[0].x, pos.y - candidates[0].y) / 100;
+      segments.forEach(seg => { if (this.segmentHitsBox(seg.a, seg.b, box)) score += 100; });
+      boxes.forEach(other => {
+        if (box.x0 < other.x1 && box.x1 > other.x0 && box.y0 < other.y1 && box.y1 > other.y0) score += 100;
+      });
+      if (box.x0 < 0 || box.y0 < 0 || box.x1 > this.width || box.y1 > this.height) score += 50;
+      if (score < bestScore) {
+        bestScore = score;
+        best = pos;
+      }
+    });
+
+    if (!this.labelBoxes) this.labelBoxes = [];
+    this.labelBoxes.push(boxAt(best.x, best.y));
+    return best;
+  }
+
+  /**
+   * Whether segment a→b crosses the axis-aligned box
+   * @private
+   */
+  segmentHitsBox(a, b, box) {
+    const inside = p => p.x >= box.x0 && p.x <= box.x1 && p.y >= box.y0 && p.y <= box.y1;
+    if (inside(a) || inside(b)) return true;
+    // Liang–Barsky clip
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    let t0 = 0;
+    let t1 = 1;
+    const clip = (p, q) => {
+      if (p === 0) return q >= 0;
+      const r = q / p;
+      if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; }
+      else { if (r < t0) return false; if (r < t1) t1 = r; }
+      return true;
+    };
+    return clip(-dx, a.x - box.x0) && clip(dx, box.x1 - a.x) &&
+      clip(-dy, a.y - box.y0) && clip(dy, box.y1 - a.y) && t0 <= t1;
+  }
+
+  /**
    * Draw a vector from the origin
    * @param {Vector} vector - The vector to draw
    * @param {object} styleConstants - Style constants object (gridSize, arrowHeadSize, vectorLineWidth, hitRadius)
@@ -445,22 +539,29 @@ class CoordinateSystem {
       this.ctx.globalAlpha = opacity; // Reset alpha
     }
 
-    // Draw label using smart positioning
+    // Draw label using smart positioning (centred on the chosen spot)
     if (vector.label) {
-      this.ctx.font = 'italic 600 16px "Work Sans", system-ui, sans-serif';
-      this.ctx.fillStyle = drawColor;
-      const labelPos = this.computeLabelPosition(vector);
-
-      // Draw base label
-      this.ctx.fillText(vector.label, labelPos.x, labelPos.y);
-
-      // Draw subscript if provided
+      const baseFont = 'italic 600 16px "Work Sans", system-ui, sans-serif';
+      const subscriptFont = '600 11px "Work Sans", system-ui, sans-serif'; // ~70% of base 16px font
+      this.ctx.font = baseFont;
+      const baseWidth = this.ctx.measureText(vector.label).width;
+      let subscriptWidth = 0;
       if (subscript) {
-        // Measure base label width to position subscript
-        const baseTextMetrics = this.ctx.measureText(vector.label);
-        const subscriptFontSize = 11; // ~70% of base 16px font
-        this.ctx.font = `600 ${subscriptFontSize}px "Work Sans", system-ui, sans-serif`;
-        this.ctx.fillText(subscript, labelPos.x + baseTextMetrics.width + 1, labelPos.y + 5);
+        this.ctx.font = subscriptFont;
+        subscriptWidth = this.ctx.measureText(subscript).width + 1;
+      }
+      const labelPos = this.placeLabel(vector, baseWidth + subscriptWidth);
+      const left = labelPos.x - (baseWidth + subscriptWidth) / 2;
+
+      this.ctx.fillStyle = drawColor;
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.font = baseFont;
+      this.ctx.fillText(vector.label, left, labelPos.y);
+
+      if (subscript) {
+        this.ctx.font = subscriptFont;
+        this.ctx.fillText(subscript, left + baseWidth + 1, labelPos.y + 5);
       }
     }
 

@@ -728,7 +728,7 @@ class MatrixMode {
 
     if (result && result.resultVector) {
       // Set label and color for result vector
-      result.resultVector.label = 'Ax';
+      result.resultVector.label = 'Av';
       result.resultVector.color = this.styleConstants.colors.result;
 
       // Animate from input vector to transformed vector
@@ -1077,6 +1077,20 @@ class MatrixMode {
       this.styleConstants.colors.matrixBasisJ || '#3b82f6',
       'ĵ'
     );
+    // Every line on the canvas, so labels can avoid them
+    const obstacleConfig = this.appConfig.matrixMode || {};
+    const obstacles = [matrixAI, matrixAJ];
+    if (obstacleConfig.includeVector) {
+      obstacles.push(this.inputVector);
+      if (this.resultVector) obstacles.push(this.resultVector);
+    } else if ((obstacleConfig.maxMatrices || 1) >= 2) {
+      obstacles.push(
+        { x: this.inputMatrixB.get(0, 0), y: this.inputMatrixB.get(1, 0) },
+        { x: this.inputMatrixB.get(0, 1), y: this.inputMatrixB.get(1, 1) }
+      );
+    }
+    this.coordSystem.setLabelObstacles(obstacles.map(vector => ({ vector })));
+
     this.drawVector(matrixAI, false, 1, false, null, 'A');
     this.drawVector(matrixAJ, false, 1, false, null, 'A');
 
@@ -1178,7 +1192,14 @@ class MatrixMode {
     const centerX = (origin.x + corner1.x + corner2.x + corner3.x) / 4;
     const centerY = (origin.y + corner1.y + corner2.y + corner3.y) / 4;
 
-    ctx.fillText(`det(${matrixLabel}) = ${Math.abs(det).toFixed(2)}`, centerX, centerY);
+    const label = `det(${matrixLabel}) = ${det.toFixed(2)}`;
+    if (this.colors && this.colors.background) {
+      ctx.strokeStyle = this.colors.background;
+      ctx.lineWidth = 4;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(label, centerX, centerY);
+    }
+    ctx.fillText(label, centerX, centerY);
 
     ctx.restore();
   }

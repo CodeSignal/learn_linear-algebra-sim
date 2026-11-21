@@ -13,7 +13,7 @@ const SUBSCRIPT_DIGITS = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇'
 const TWO_VECTOR_SECTIONS = ['addition', 'dotProduct', 'projectionAngle', 'linearCombination'];
 
 class VectorMode {
-  constructor(canvas, appConfig, styleConstants, coordSystem, rootElement) {
+  constructor(canvas, appConfig, styleConstants, coordSystem, rootElement, savedState = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.appConfig = appConfig; // Runtime configuration from config.json
@@ -72,6 +72,9 @@ class VectorMode {
     // Angle arc visualization state
     this.angleArcState = null; // { vector1, vector2, angleRadians, angleDegrees }
 
+    // Projection drop-line state
+    this.projectionState = null; // { source } — vector whose projection is the result
+
     // Color cache for theme-responsive rendering
     this.colors = {};
 
@@ -102,6 +105,7 @@ class VectorMode {
     // Initialize
     this.setupCanvasEventListeners();
     this.setupSidebarEventListeners();
+    if (savedState) this.restoreState(savedState);
     this.updateUI(); // Initial UI update
     this.render();
   }
@@ -267,7 +271,7 @@ class VectorMode {
     vector.y = y;
     this.vectors = [...this.vectors, vector].sort((a, b) => a.id - b.id);
 
-    this.clearVisualizations();
+    this.invalidateResults();
     this.updateUI();
     this.render();
     logAction(`Vector created from input: ${vector.name} at (${x.toFixed(2)}, ${y.toFixed(2)}), magnitude: ${vector.magnitude().toFixed(2)}, angle: ${vector.angleDegrees().toFixed(2)}°`);
@@ -288,7 +292,7 @@ class VectorMode {
     vector.y = y;
 
     // Results no longer match the edited vector
-    this.clearVisualizations();
+    this.invalidateResults();
     this.updateUI();
     this.render();
   }
@@ -306,8 +310,7 @@ class VectorMode {
     this.cancelAnimations();
     this.vectors = this.vectors.filter(v => v !== vector);
     if (this.hoveredVector === vector) this.hoveredVector = null;
-    this.clearVisualizations();
-    this.sidebar.clearResults();
+    this.invalidateResults();
     this.updateUI();
     this.render();
     logAction(`Vector removed: ${vector.name}`);
@@ -317,6 +320,13 @@ class VectorMode {
     this.resultVector = null;
     this.parallelogramState = null;
     this.angleArcState = null;
+    this.projectionState = null;
+  }
+
+  /** Drop the drawn result and its text, e.g. after the vectors change */
+  invalidateResults() {
+    this.clearVisualizations();
+    this.sidebar.clearResults();
   }
 
   // ============================================================================
@@ -353,7 +363,8 @@ class VectorMode {
       isDrawing: this.isDrawing,
       hoveredVector: this.hoveredVector,
       angleArcState: this.angleArcState,
-      parallelogramState: this.parallelogramState
+      parallelogramState: this.parallelogramState,
+      projectionState: this.projectionState
     });
   }
 
@@ -422,7 +433,7 @@ class VectorMode {
       this.editTarget.y = this.snapToGrid(mathPos.y);
 
       // Results no longer match the edited vector
-      this.clearVisualizations();
+      this.invalidateResults();
       this.updateUI(); // Update UI when vector changes
       this.render();
       return;
@@ -488,7 +499,7 @@ class VectorMode {
       const angle = vector.angleDegrees().toFixed(2);
       logAction(`Vector created: ${vector.name} at (${vector.x.toFixed(1)}, ${vector.y.toFixed(1)}), magnitude: ${mag}, angle: ${angle}°`);
 
-      this.clearVisualizations();
+      this.invalidateResults();
       this.updateUI(); // Update UI when vector is created
     }
 
@@ -569,9 +580,15 @@ class VectorMode {
     if (opResult.clearParallelogram) this.parallelogramState = null;
     if (opResult.clearAngleArc) this.angleArcState = null;
     if (opResult.angleArcState) this.angleArcState = opResult.angleArcState;
+    this.projectionState = null;
 
     if (opResult.resultVector) {
       this.animateToResult(opResult.resultVector, () => {
+        // Drop line appears once the projection has settled
+        if (opResult.projectionState) {
+          this.projectionState = opResult.projectionState;
+          this.render();
+        }
         this.displayResultLines(opResult);
       });
       return;
@@ -592,6 +609,7 @@ class VectorMode {
 
     const { v1, v2, negatedV2, isLinearCombination } = opResult.parallelogramVectors;
     this.angleArcState = null;
+    this.projectionState = null;
     this.animateParallelogram(
       opResult.resultVector,
       v1,
@@ -614,7 +632,13 @@ class VectorMode {
 
   performScale() {
     const scalar = this.sidebar.getScalarInput();
-    if (isNaN(scalar)) return;
+    if (isNaN(scalar)) {
+      this.cancelAnimations();
+      this.clearVisualizations();
+      this.render();
+      this.sidebar.displayResult('Enter a number to scale by');
+      return;
+    }
     this.showResult(this.operations.scale(this.getOperand('scale'), scalar));
   }
 
@@ -789,6 +813,38 @@ class VectorMode {
    */
   getVectors() {
     return this.resultVector ? [...this.vectors, this.resultVector] : [...this.vectors];
+  }
+
+  /**
+   * Snapshot kept by ModeManager while another mode is active
+   * @returns {{vectors: Array<{id: number, x: number, y: number}>, coordinateMode: string}}
+   */
+  getState() {
+    return {
+      vectors: this.vectors.map(v => ({ id: v.id, x: v.x, y: v.y })),
+      coordinateMode: this.coordinateMode
+    };
+  }
+
+  /**
+   * Rebuild vectors and the coordinate mode from a getState() snapshot
+   * @param {Object} state - Snapshot from getState()
+   */
+  restoreState(state) {
+    this.vectors = (state.vectors || [])
+      .filter(v => v.id >= 1 && v.id <= this.maxVectors)
+      .map(({ id, x, y }) => {
+        const vector = this.createVector(id);
+        vector.x = x;
+        vector.y = y;
+        return vector;
+      })
+      .sort((a, b) => a.id - b.id);
+
+    if (state.coordinateMode && state.coordinateMode !== this.coordinateMode) {
+      this.coordinateMode = state.coordinateMode;
+      if (this.sidebar.dropdowns.coordMode) this.sidebar.dropdowns.coordMode.setValue(state.coordinateMode);
+    }
   }
 
   /**

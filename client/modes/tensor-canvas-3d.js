@@ -105,7 +105,7 @@ class TensorCanvas3D {
 
     handleWheel(e) {
         e.preventDefault();
-        this.zoom += e.deltaY * 0.1;
+        this.zoom -= e.deltaY * 0.1; // scroll up zooms in, as on the 2D canvas
         this.zoom = Math.max(10, Math.min(200, this.zoom));
 
         if (this.callbacks.onRender) {

@@ -66,8 +66,11 @@ before editing any asset under `client/`, then consult the sub-AGENTS inside
 - `ModeManager.registerMode(name, factory)` defers heavy instantiation until
   the mode activates. Factories must return an object that implements
   `destroy()`; clean up DOM listeners, `requestAnimationFrame` loops, and theme
-  subscriptions there. Mode buttons and visible containers are driven by
-  `enabledModes` from config; disabled modes are hidden.
+  subscriptions there. An optional `getState()` is called before `destroy()`;
+  its snapshot is passed back to the factory the next time that mode
+  activates, so switching modes keeps user work (vector mode keeps its
+  vectors and coordinate mode). Mode buttons and visible containers are
+  driven by `enabledModes` from config; disabled modes are hidden.
 - Always route status changes through `window.StatusService`. Only the verbatim
   strings listed in the root AGENTS are allowed.
 - Config data flows: `ConfigService.loadConfig()` fetches `config.json`, merges

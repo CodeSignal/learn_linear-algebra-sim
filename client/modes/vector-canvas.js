@@ -93,6 +93,27 @@ class VectorCanvas {
     // Use CoordinateSystem's clear method
     this.coordSystem.clear();
 
+    // Every line on the canvas, so labels can avoid them
+    const pState = state.parallelogramState;
+    const obstacles = state.vectors.map(vector => ({ vector }));
+    if (state.resultVector) obstacles.push({ vector: state.resultVector });
+    if (state.isDrawing && state.drawingVector) obstacles.push({ vector: state.drawingVector });
+    if (pState) {
+      [pState.negatedVector2, pState.scaledV1, pState.scaledV2].forEach(vector => {
+        if (vector) obstacles.push({ vector });
+      });
+      if (pState.useVector1 && pState.useVector2) {
+        obstacles.push({ vector: pState.useVector2, start: pState.useVector1 });
+        obstacles.push({ vector: pState.useVector1, start: pState.useVector2 });
+      }
+    }
+    if (state.projectionState && state.resultVector) {
+      const { source } = state.projectionState;
+      const tip = state.resultVector;
+      obstacles.push({ vector: { x: source.x - tip.x, y: source.y - tip.y }, start: tip });
+    }
+    this.coordSystem.setLabelObstacles(obstacles);
+
     // Use CoordinateSystem for grid and axes
     this.coordSystem.drawGrid();
     this.coordSystem.drawAxes();
@@ -191,6 +212,12 @@ class VectorCanvas {
       );
     }
 
+    // Projection: perpendicular drop from the projected vector's tip
+    if (state.projectionState && state.resultVector) {
+      const { source, target } = state.projectionState;
+      this.drawProjectionDrop(source, state.resultVector, target);
+    }
+
     // Draw result vector
     if (state.resultVector) {
       this.coordSystem.drawVector(
@@ -217,6 +244,83 @@ class VectorCanvas {
   }
 
   /**
+   * Draw the dashed drop line from a vector's tip to its projection, with a
+   * right-angle mark where it meets the projection
+   * @param {Vector} source - Vector that was projected
+   * @param {Vector} projection - Projection result
+   * @param {Vector} [target] - Vector or axis projected onto. When the projection
+   *   points away from a vector (obtuse angle), its line is extended through the
+   *   origin; the target also orients the right-angle mark for a zero projection.
+   */
+  drawProjectionDrop(source, projection, target) {
+    const from = this.coordSystem.mathToScreen(source.x, source.y);
+    const to = this.coordSystem.mathToScreen(projection.x, projection.y);
+    const ctx = this.ctx;
+    const { parallelogram } = this.styleConstants;
+
+    // Guide along the target's line, so the drop line meets something
+    if (target && !target.axisName && projection.x * target.x + projection.y * target.y < 0) {
+      const origin = this.coordSystem.mathToScreen(0, 0);
+      ctx.save();
+      ctx.strokeStyle = target.color;
+      ctx.globalAlpha = parallelogram.opacity;
+      ctx.lineWidth = parallelogram.lineWidth;
+      ctx.setLineDash(parallelogram.dashPattern);
+      // Run a little past the projection's tip so the guide isn't hidden under it
+      const length = Math.hypot(to.x - origin.x, to.y - origin.y);
+      const overshoot = length > 0 ? 1 + 30 / length : 1;
+      ctx.beginPath();
+      ctx.moveTo(origin.x, origin.y);
+      ctx.lineTo(origin.x + (to.x - origin.x) * overshoot, origin.y + (to.y - origin.y) * overshoot);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const dropLength = Math.hypot(from.x - to.x, from.y - to.y);
+    if (dropLength < 1) return; // source already lies on the line
+
+    ctx.save();
+    ctx.strokeStyle = source.color;
+    ctx.globalAlpha = parallelogram.opacity;
+    ctx.lineWidth = parallelogram.lineWidth;
+    ctx.setLineDash(parallelogram.dashPattern);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+
+    // Right-angle mark: unit vectors along the drop and along the target's line
+    // (back toward the origin, or along the target when the projection is at the origin)
+    const origin = this.coordSystem.mathToScreen(0, 0);
+    const alongLength = Math.hypot(origin.x - to.x, origin.y - to.y);
+    let along = null;
+    if (alongLength >= 1) {
+      along = { x: (origin.x - to.x) / alongLength, y: (origin.y - to.y) / alongLength, room: alongLength / 2 };
+    } else if (target) {
+      const tip = this.coordSystem.mathToScreen(target.x, target.y);
+      const targetLength = Math.hypot(tip.x - origin.x, tip.y - origin.y);
+      if (targetLength >= 1) {
+        along = { x: (tip.x - origin.x) / targetLength, y: (tip.y - origin.y) / targetLength, room: Infinity };
+      }
+    }
+    if (along) {
+      const size = Math.min(10, dropLength / 2, along.room);
+      const ux = (from.x - to.x) / dropLength;
+      const uy = (from.y - to.y) / dropLength;
+      const vx = along.x;
+      const vy = along.y;
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(to.x + ux * size, to.y + uy * size);
+      ctx.lineTo(to.x + (ux + vx) * size, to.y + (uy + vy) * size);
+      ctx.lineTo(to.x + vx * size, to.y + vy * size);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /**
    * Draw an angle arc between two vectors at the origin
    * @param {Vector} vector1 - First vector
    * @param {Vector} vector2 - Second vector
@@ -226,9 +330,11 @@ class VectorCanvas {
   drawAngleArc(vector1, vector2, angleRadians, angleDegrees) {
     const origin = this.mathToScreen(0, 0);
 
-    // Calculate arc radius (60 pixels or 20% of smaller vector, whichever is smaller)
-    const mag1 = vector1.magnitude() * this.coordSystem.getScale();
-    const mag2 = vector2.magnitude() * this.coordSystem.getScale();
+    // Arc radius: 40% of the shorter vector, kept between 30 and 60 pixels.
+    // An axis operand (î or ĵ) stands for the whole axis, so its length doesn't count.
+    const screenLength = v => (v.axisName ? Infinity : v.magnitude() * this.coordSystem.getScale());
+    const mag1 = screenLength(vector1);
+    const mag2 = screenLength(vector2);
     const maxRadius = 60;
     const minRadius = 30;
     const arcRadius = Math.min(maxRadius, Math.max(minRadius, Math.min(mag1, mag2) * 0.4));
@@ -274,9 +380,12 @@ class VectorCanvas {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Draw angle label at midpoint of arc
-    const midAngle = (startAngle + endAngle) / 2;
-    const labelRadius = arcRadius * 0.6;  // Place label at 60% of arc radius
+    // Draw angle label at midpoint of arc. When the arc wraps past 0 (end < start),
+    // the plain average points the opposite way, so turn it half a circle.
+    let midAngle = (startAngle + endAngle) / 2;
+    if (endAngle < startAngle) midAngle += Math.PI;
+    // Inside the arc when there is room, just outside it otherwise
+    const labelRadius = arcRadius >= 45 ? arcRadius * 0.6 : arcRadius + 22;
     const labelX = origin.x + labelRadius * Math.cos(midAngle);
     const labelY = origin.y + labelRadius * Math.sin(midAngle);
 
@@ -284,7 +393,15 @@ class VectorCanvas {
     this.ctx.fillStyle = 'rgb(147, 51, 234)';  // Darker purple for text
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(`${angleDegrees.toFixed(1)}°`, labelX, labelY);
+    const label = `${angleDegrees.toFixed(1)}°`;
+    // Halo keeps the label readable where it crosses an axis or a vector
+    if (this.colors && this.colors.background) {
+      this.ctx.strokeStyle = this.colors.background;
+      this.ctx.lineWidth = 4;
+      this.ctx.lineJoin = 'round';
+      this.ctx.strokeText(label, labelX, labelY);
+    }
+    this.ctx.fillText(label, labelX, labelY);
 
     this.ctx.restore();
   }

@@ -318,9 +318,11 @@ class VectorCanvas {
   drawAngleArc(vector1, vector2, angleRadians, angleDegrees) {
     const origin = this.mathToScreen(0, 0);
 
-    // Calculate arc radius (60 pixels or 20% of smaller vector, whichever is smaller)
-    const mag1 = vector1.magnitude() * this.coordSystem.getScale();
-    const mag2 = vector2.magnitude() * this.coordSystem.getScale();
+    // Arc radius: 40% of the shorter vector, kept between 30 and 60 pixels.
+    // An axis operand (î or ĵ) stands for the whole axis, so its length doesn't count.
+    const screenLength = v => (v.axisName ? Infinity : v.magnitude() * this.coordSystem.getScale());
+    const mag1 = screenLength(vector1);
+    const mag2 = screenLength(vector2);
     const maxRadius = 60;
     const minRadius = 30;
     const arcRadius = Math.min(maxRadius, Math.max(minRadius, Math.min(mag1, mag2) * 0.4));
@@ -366,9 +368,12 @@ class VectorCanvas {
     this.ctx.lineWidth = 2;
     this.ctx.stroke();
 
-    // Draw angle label at midpoint of arc
-    const midAngle = (startAngle + endAngle) / 2;
-    const labelRadius = arcRadius * 0.6;  // Place label at 60% of arc radius
+    // Draw angle label at midpoint of arc. When the arc wraps past 0 (end < start),
+    // the plain average points the opposite way, so turn it half a circle.
+    let midAngle = (startAngle + endAngle) / 2;
+    if (endAngle < startAngle) midAngle += Math.PI;
+    // Inside the arc when there is room, just outside it otherwise
+    const labelRadius = arcRadius >= 45 ? arcRadius * 0.6 : arcRadius + 22;
     const labelX = origin.x + labelRadius * Math.cos(midAngle);
     const labelY = origin.y + labelRadius * Math.sin(midAngle);
 
@@ -376,7 +381,15 @@ class VectorCanvas {
     this.ctx.fillStyle = 'rgb(147, 51, 234)';  // Darker purple for text
     this.ctx.textAlign = 'center';
     this.ctx.textBaseline = 'middle';
-    this.ctx.fillText(`${angleDegrees.toFixed(1)}°`, labelX, labelY);
+    const label = `${angleDegrees.toFixed(1)}°`;
+    // Halo keeps the label readable where it crosses an axis or a vector
+    if (this.colors && this.colors.background) {
+      this.ctx.strokeStyle = this.colors.background;
+      this.ctx.lineWidth = 4;
+      this.ctx.lineJoin = 'round';
+      this.ctx.strokeText(label, labelX, labelY);
+    }
+    this.ctx.fillText(label, labelX, labelY);
 
     this.ctx.restore();
   }

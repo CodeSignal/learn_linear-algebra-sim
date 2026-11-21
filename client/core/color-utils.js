@@ -15,6 +15,7 @@
     const getColor = (varName) => getComputedStyle(bespokeElement).getPropertyValue(varName).trim() || null;
 
     return {
+      background: getColor('--la-canvas-bg'),
       grid: getColor('--la-canvas-grid') || getColor('--Colors-Stroke-Default'),
       axis: getColor('--la-canvas-axis') || getColor('--Colors-Stroke-Stronger'),
       text: getColor('--la-canvas-text') || getColor('--Colors-Text-Body-Light'),

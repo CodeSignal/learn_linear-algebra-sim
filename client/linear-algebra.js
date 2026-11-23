@@ -111,6 +111,11 @@ async function loadConfig() {
     });
   }
 
+  // App-wide switches resolved to a complete { key: boolean } map
+  if (window.ConfigOptions) {
+    validatedConfig.ui = window.ConfigOptions.readUiFlags(rawConfig);
+  }
+
   console.log(`Configuration loaded successfully. Default mode: ${validatedConfig.defaultMode}`);
 
   // Return immutable config (freeze to prevent mutations)
@@ -124,6 +129,27 @@ async function loadConfig() {
 // Note: VectorMode class is now loaded from modes/vector-mode.js
 
 // ============================================================================
+// APP-WIDE SWITCHES
+// ============================================================================
+
+/**
+ * Apply config.json "ui" switches that don't belong to a single mode.
+ * Zoom and pan are applied by each mode's viewport.
+ * @param {Object} ui - Resolved ui flags
+ */
+function applyUiFlags(ui) {
+  if (!ui) return;
+
+  const helpButton = document.getElementById('btn-help');
+  if (helpButton && ui.helpButton === false) {
+    helpButton.hidden = true;
+  }
+
+  // Results overlays are shown by ModeManager per mode; this class keeps them hidden
+  document.body.classList.toggle('results-panel-off', ui.resultsPanel === false);
+}
+
+// ============================================================================
 // INITIALIZATION
 // ============================================================================
 
@@ -134,6 +160,7 @@ async function loadConfig() {
 async function initializeApp() {
   // Load immutable appConfig (single source of truth)
   const appConfig = await loadConfig();
+  applyUiFlags(appConfig.ui);
 
   // Initialize CanvasThemeService with STYLE_CONSTANTS
   if (window.CanvasThemeService && typeof window.CanvasThemeService.init === 'function') {

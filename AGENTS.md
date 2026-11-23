@@ -65,7 +65,10 @@ this file first, then the nested `AGENTS.md` files (`client/`, `client/core/`,
   visibility is config-only: `linear-algebra.js` resolves each
   `<mode>Mode.sections` map with `SidebarSections.resolveSections`, and modes
   strip hidden sections with `SidebarSections.applySections` before binding UI.
-  Never add user-facing toggles for section visibility.
+  Never add user-facing toggles for section visibility. Feature switches
+  (`ui`, `vectorMode.interactions`, `vectorMode.operations`, `editable`, ...)
+  and starting values are read with `window.ConfigOptions`; every new feature
+  gets a switch that defaults to on.
 - **Mode lifecycle**: Register modes with `ModeManager.registerMode(name,
   factory)` and switch via `ModeManager.setMode()`. Factories must return an
   object exposing `destroy()` to remove DOM/canvas listeners and unsubscribe

@@ -20,6 +20,11 @@ across future Bespoke apps.
   - Returns *mutable* objects internally but callers must treat them as frozen
     because `linear-algebra.js` wraps them in `Object.freeze`.
   - Expose `clearCache()` for manual reloads/tests.
+  - `window.ConfigOptions` holds the forgiving readers every mode uses for
+    feature switches and starting values (`readFlag`, `readFlags`,
+    `readNumber`, `readPoint`, `readMatrix2`, `readChoice`, `readUiFlags`).
+    Malformed values `console.warn` with their config path and fall back to the
+    default; never throw on bad config.
 - `sidebar-sections.js` (`window.SidebarSections`)\
   - `SIDEBAR_SECTIONS` is the source of truth for configurable section keys per
     mode (vector, matrix, tensor).

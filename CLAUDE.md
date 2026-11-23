@@ -140,7 +140,7 @@ client/
 ├── logger.js                # logAction helper -> POST /log
 ├── app.js                   # WebSocket & help bootstrap
 ├── linear-algebra.js        # Main app logic (registers modes, applies config)
-├── config.json              # Application configuration (default mode, enabled modes, sidebar sections)
+├── config.json              # Application configuration (modes, sidebar sections, feature switches, starting values)
 ├── core/                    # Shared services
 │   ├── mode-manager.js      # Mode switching system + dynamic buttons
 │   ├── theme-service.js     # Theme management

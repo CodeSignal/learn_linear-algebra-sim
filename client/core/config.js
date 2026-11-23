@@ -199,13 +199,25 @@
   }
 
   /**
+   * Convert a config value to a number without coercion surprises: only real
+   * numbers and non-blank numeric strings count. null, booleans, blank strings
+   * and objects (including ones whose toString/valueOf would throw) give NaN.
+   * @returns {number} The number, or NaN
+   */
+  function toNumber(value) {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string' && value.trim() !== '') return Number(value);
+    return NaN;
+  }
+
+  /**
    * Read a finite number
    * @returns {number} The number, or fallback
    */
   function readNumber(value, fallback, path = '') {
     if (value === undefined || value === null) return fallback;
-    const number = Number(value);
-    if (typeof value === 'boolean' || value === '' || !Number.isFinite(number)) {
+    const number = toNumber(value);
+    if (!Number.isFinite(number)) {
       console.warn(`config.json: ${path || 'value'} must be a number`);
       return fallback;
     }
@@ -220,13 +232,13 @@
     let x;
     let y;
     if (Array.isArray(value) && value.length === 2) {
-      [x, y] = value.map(Number);
+      [x, y] = value.map(toNumber);
     } else if (value && typeof value === 'object' && 'x' in value && 'y' in value) {
-      x = Number(value.x);
-      y = Number(value.y);
+      x = toNumber(value.x);
+      y = toNumber(value.y);
     } else if (value && typeof value === 'object' && 'r' in value && 'theta' in value) {
-      const r = Number(value.r);
-      const theta = Number(value.theta) * Math.PI / 180;
+      const r = toNumber(value.r);
+      const theta = toNumber(value.theta) * Math.PI / 180;
       x = r * Math.cos(theta);
       y = r * Math.sin(theta);
       // Keep whole numbers whole (cos/sin leave tiny rounding errors)

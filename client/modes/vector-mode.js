@@ -170,14 +170,19 @@ class VectorMode {
       }
     }
 
+    // Reflection axes: an explicit [] hides the card; a non-list, or a list
+    // with no known axis, warns and keeps the default (all three)
     let reflectionAxes = REFLECTION_AXES;
     if (config.reflectionAxes !== undefined) {
-      const listed = Array.isArray(config.reflectionAxes) ? config.reflectionAxes : [];
-      const unknown = listed.filter(axis => !REFLECTION_AXES.includes(axis));
-      if (!Array.isArray(config.reflectionAxes) || unknown.length > 0) {
+      const listed = Array.isArray(config.reflectionAxes) ? config.reflectionAxes : null;
+      const known = listed ? REFLECTION_AXES.filter(axis => listed.includes(axis)) : [];
+      const unknown = listed ? listed.filter(axis => !REFLECTION_AXES.includes(axis)) : [];
+      if (!listed || unknown.length > 0) {
         console.warn(`config.json: ${path('reflectionAxes')} must list some of ${REFLECTION_AXES.map(a => `"${a}"`).join(', ')}`);
       }
-      reflectionAxes = REFLECTION_AXES.filter(axis => listed.includes(axis));
+      if (listed && (listed.length === 0 || known.length > 0)) {
+        reflectionAxes = known;
+      }
     }
 
     const coefficient = (value, index) => {

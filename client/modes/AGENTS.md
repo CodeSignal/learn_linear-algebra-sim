@@ -36,10 +36,30 @@ Files: `vector-mode.js`, `vector-canvas.js`, `vector-sidebar.js`,
      `resultVector` and interaction state (drawing/editing flags, hover
      targets). The vector cap is `min(appConfig.vectorMode.maxVectors,
      VECTOR_LIMIT)` with `VECTOR_LIMIT = 12`.
-   - `applySidebarSections()` runs first in the constructor: it removes
+   - `readOptions()` runs first in the constructor. It reads vectorMode's
+     switches and starting values through `window.ConfigOptions` into the
+     frozen `this.options` (`coordinateMode`, `presets`, `interactions`,
+     `operations`, `reflectionAxes`, `polarResults`, `scalar`,
+     `coefficients`), and aliases `this.interactions` to
+     `options.interactions`. Bad values warn and keep the default:
+     `reflectionAxes` as a non-list, or a list with no known axis, keeps all
+     three; only an explicit `[]` hides the Reflection card.
+   - `applySidebarSections()` runs right after `readOptions()`, before
+     `VectorSidebar` caches its elements: it removes
      sections hidden by `vectorMode.sections` (`coordinateMode`, `reset`,
      `vectorList`, and each operation group), plus `TWO_VECTOR_SECTIONS`
-     when the cap is 1.
+     when the cap is 1. It also removes buttons switched off in
+     `options.operations` (a card left with one button is retitled after it,
+     one left with none is hidden), hides Reflection when
+     `options.reflectionAxes` is empty, removes `#vector-add` when
+     `interactions.add` is off, and sets the scalar box's starting value.
+   - `loadPresetVectors()` replaces `vectors` with `options.presets` (v₁, v₂,
+     … in order; none by default). The constructor calls it when there is no
+     saved mode snapshot, and Reset (`clearAll()`) calls it too, so Reset
+     returns to the configured starting vectors rather than an empty canvas.
+   - `idleCursor()` is the cursor over empty canvas: `crosshair` when
+     `interactions.draw` is on, `default` otherwise. Use it wherever the
+     cursor goes back to idle.
    - User vectors are created via `createVector(id)`: new vectors take the
      lowest free id, are labelled `vₙ`, use `vectorColor(id)`
      (`styleConstants.colors.vectorPalette[id - 1]`, or its

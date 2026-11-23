@@ -81,7 +81,7 @@ Every switch defaults to **on** and every starting value to the app's usual defa
 | `interactions.remove` | on | The × button on each vector |
 | `operations.add`, `operations.subtract` | on | The two buttons in the Addition & Subtraction card |
 | `operations.project`, `operations.angle` | on | The two buttons in the Projection & Angle card |
-| `reflectionAxes` | all three | Which of `"x-axis"`, `"y-axis"`, `"diagonal"` (y = x) Reflection offers |
+| `reflectionAxes` | all three | Which of `"x-axis"`, `"y-axis"`, `"diagonal"` (y = x) Reflection offers; `[]` hides the card. Unknown names are skipped; a list with no known axis keeps all three |
 | `results.polar` | on | The extra `polar: r = …, θ = …` line under vector results |
 | `scalar` | `2` | Starting value in the Scalar Multiplication box |
 | `coefficients` | `[1, 1]` | Starting Linear Combination coefficients (−9 to 9) |

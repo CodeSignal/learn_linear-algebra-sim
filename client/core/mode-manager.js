@@ -229,7 +229,7 @@
       } catch (error) {
         console.error(`Error instantiating mode '${modeName}':`, error);
         if (window.StatusService) {
-          window.StatusService.setStatus('Error: failed to initialize mode');
+          window.StatusService.setError('Error: failed to initialize mode');
         }
       }
     }

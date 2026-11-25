@@ -118,6 +118,11 @@ Use the exact strings handled by `StatusService`:
 - "Failed to load data"
 - "Auto-save initialized"
 
+Errors ("Save failed (will retry)", "Failed to load data", "Error: failed to ...")
+go through `StatusService.setError()`, which keeps them visible in the header.
+Routine statuses are visually hidden (the practice reset button covers that spot)
+but still announced to screen readers.
+
 ### Code Organization
 - Configuration objects at the top of files
 - Class-based organization for main components

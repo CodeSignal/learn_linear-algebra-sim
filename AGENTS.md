@@ -56,6 +56,8 @@ this file first, then the nested `AGENTS.md` files (`client/`, `client/core/`,
 - **Status strings**: Only use `"Ready"`, `"Loading..."`, `"Saving..."`,
   `"Changes saved"`, `"Save failed (will retry)"`, `"Error: failed to [OPERATION]"`,
   `"Auto-save initialized"`. Route all updates through `window.StatusService`.
+  Set error strings with `StatusService.setError()`: only errors are drawn in
+  the header; routine statuses are kept for screen readers only.
 - **Async safety**: Wrap every fetch/WebSocket/localStorage call in try/catch,
   `console.error` failures, and fall back to `StatusService.setReady()` after
   recovery. Implement retry loops for save workflows and surface

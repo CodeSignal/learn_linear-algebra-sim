@@ -171,7 +171,7 @@ async function initializeApp() {
   if (!window.ModeManager) {
     console.error('ModeManager not available');
     if (window.StatusService) {
-      window.StatusService.setStatus('Error: failed to initialize');
+      window.StatusService.setError('Error: failed to initialize');
     }
     return;
   }
@@ -181,7 +181,7 @@ async function initializeApp() {
   if (!coordSystem) {
     console.error('Failed to initialize CoordinateSystem');
     if (window.StatusService) {
-      window.StatusService.setStatus('Error: failed to initialize');
+      window.StatusService.setError('Error: failed to initialize');
     }
     return;
   }

@@ -595,10 +595,11 @@ body.bespoke {
   flex-shrink: 0;
 }
 
-/* Status text stays available to screen readers but is not drawn: in a CodeSignal
-   practice the platform's reset-session button sits at the top right of the
-   preview and would cover it. */
-.bespoke .header .status {
+/* Routine status text ("Ready", "Loading...") stays available to screen readers
+   but is not drawn: in a CodeSignal practice the platform's reset-session button
+   sits at the top right of the preview and would cover it. Errors set through
+   StatusService.setError() stay visible (see .status-error below). */
+.bespoke .header .status:not(.status-error) {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -608,4 +609,8 @@ body.bespoke {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+.bespoke .header .status.status-error {
+  color: var(--Colors-Alert-Error-Default);
 }

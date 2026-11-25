@@ -17,6 +17,19 @@
   function setStatus(message) {
     if (statusElement) {
       statusElement.textContent = message;
+      statusElement.classList.remove('status-error');
+    }
+  }
+
+  /**
+   * Set an error message. Unlike routine statuses, errors stay visible in the
+   * header: in an embedded practice they are the learner's only explanation.
+   * @param {string} message - Error message to display
+   */
+  function setError(message) {
+    if (statusElement) {
+      statusElement.textContent = message;
+      statusElement.classList.add('status-error');
     }
   }
 
@@ -45,7 +58,7 @@
    * Set status to "Save failed (will retry)"
    */
   function setSaveFailed() {
-    setStatus('Save failed (will retry)');
+    setError('Save failed (will retry)');
   }
 
   /**
@@ -59,7 +72,7 @@
    * Set status to "Failed to load data"
    */
   function setLoadFailed() {
-    setStatus('Failed to load data');
+    setError('Failed to load data');
   }
 
   /**
@@ -72,6 +85,7 @@
   // Export to global scope
   window.StatusService = {
     setStatus,
+    setError,
     setLoading,
     setSaving,
     setReady,

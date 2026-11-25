@@ -594,3 +594,18 @@ body.bespoke {
 .bespoke .header .mode-switcher {
   flex-shrink: 0;
 }
+
+/* Status text stays available to screen readers but is not drawn: in a CodeSignal
+   practice the platform's reset-session button sits at the top right of the
+   preview and would cover it. */
+.bespoke .header .status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
